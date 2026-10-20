@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A synthetic ODM v2.0 CRF written for the crfutils tests. It is XSD-valid and loads strictly in odmlib.
+  It covers what the copied example files do not:
+  - a Protocol whose visit order (SCR, WK1, COMMON) is the reverse of the StudyEventDef document order;
+  - a Common event; a form (IG.FORM.AE/1) that no visit collects, whose OID contains a slash;
+  - annotation vocabulary B: Form/Section SDTM aliases and @Domain, beside vocabulary A's formAnnotation;
+  - the annotation forms CMDOSE;CMDOSTXT, [NOT SUBMITTED];CMSTRF;CMSTRTPT, CMINDC in SUPPCM, DM.SEX=M on a
+    CodeListItem, and one unparseable annotation;
+  - a Section whose ItemRef, nested Concept and ItemRef have no OrderNumbers (document order);
+  - codelists with two and with more than two items; Question-only and Prompt-only items; UnitsItemOID;
+    an xhtml TranslatedText; a MethodDef, a ConditionDef and an AnnotatedCRF Leaf.
+-->
+<ODM xmlns="http://www.cdisc.org/ns/odm/v2.0" xmlns:xlink="http://www.w3.org/1999/xlink"
+     ODMVersion="2.0" FileType="Snapshot" Granularity="Metadata" FileOID="FILE.SYNTH.1"
+     CreationDateTime="2026-10-17T09:00:00" Originator="crfutils tests" SourceSystem="hand-written"
+     SourceSystemVersion="1">
+  <Study OID="ST.SYNTH" StudyName="SYNTH" ProtocolName="SYNTH-001">
+    <Description>
+      <TranslatedText xml:lang="en" Type="text/plain">Synthetic study for the crfutils tests</TranslatedText>
+    </Description>
+    <MetaDataVersion OID="MDV.1" Name="Synthetic CRF metadata">
+      <Description>
+        <TranslatedText xml:lang="en" Type="text/plain">Blank annotated CRFs covering the annotation vocabularies</TranslatedText>
+      </Description>
+      <AnnotatedCRF>
+        <DocumentRef LeafID="LF.acrf"/>
+      </AnnotatedCRF>
+      <Protocol>
+        <StudyEventGroupRef StudyEventGroupOID="SEG.MAIN" OrderNumber="1" Mandatory="Yes"/>
+      </Protocol>
+      <StudyEventGroupDef OID="SEG.MAIN" Name="Main schedule">
+        <StudyEventRef StudyEventOID="SE.SCR" OrderNumber="1" Mandatory="Yes"/>
+        <StudyEventRef StudyEventOID="SE.WK1" OrderNumber="2" Mandatory="Yes"/>
+        <StudyEventRef StudyEventOID="SE.COMMON" OrderNumber="3" Mandatory="No"/>
+      </StudyEventGroupDef>
+      <!-- document order WK1, SCR, COMMON is the reverse of the protocol order -->
+      <StudyEventDef OID="SE.WK1" Name="Week 1" Repeating="No" Type="Scheduled">
+        <ItemGroupRef ItemGroupOID="IG.FORM.VS" OrderNumber="1" Mandatory="Yes"/>
+        <ItemGroupRef ItemGroupOID="IG.FORM.CM" OrderNumber="2" Mandatory="No"/>
+      </StudyEventDef>
+      <StudyEventDef OID="SE.SCR" Name="Screening" Repeating="No" Type="Scheduled">
+        <ItemGroupRef ItemGroupOID="IG.FORM.DM" OrderNumber="1" Mandatory="Yes"/>
+        <ItemGroupRef ItemGroupOID="IG.FORM.VS" OrderNumber="2" Mandatory="Yes"/>
+      </StudyEventDef>
+      <StudyEventDef OID="SE.COMMON" Name="Common" Repeating="Yes" Type="Common">
+        <ItemGroupRef ItemGroupOID="IG.FORM.CM" Mandatory="No"/>
+      </StudyEventDef>
+      <!-- forms, in document order; the AE form is collected by no visit -->
+      <ItemGroupDef OID="IG.FORM.AE/1" Name="Adverse Events" Repeating="No" Type="Form">
+        <ItemGroupRef ItemGroupOID="IG.SEC.AE" Mandatory="Yes"/>
+      </ItemGroupDef>
+      <ItemGroupDef OID="IG.FORM.VS" Name="Vital Signs" Repeating="No" Type="Form">
+        <ItemGroupRef ItemGroupOID="IG.SEC.VS" OrderNumber="1" Mandatory="Yes"/>
+        <Alias Context="formAnnotation" Name="DOMAIN = VS"/>
+      </ItemGroupDef>
+      <ItemGroupDef OID="IG.FORM.DM" Name="Demographics" Repeating="No" Type="Form">
+        <ItemGroupRef ItemGroupOID="IG.SEC.DM" Mandatory="Yes"/>
+        <Alias Context="SDTM" Name="DM"/>
+      </ItemGroupDef>
+      <ItemGroupDef OID="IG.FORM.CM" Name="Concomitant Medications" Repeating="No" Domain="CM" Type="Form">
+        <ItemGroupRef ItemGroupOID="IG.SEC.CM.TAKEN" OrderNumber="1" Mandatory="Yes"/>
+        <ItemGroupRef ItemGroupOID="IG.SEC.CM" OrderNumber="2" Mandatory="No" CollectionExceptionConditionOID="CD.CMTAKEN"/>
+      </ItemGroupDef>
+      <!-- sections and concepts -->
+      <ItemGroupDef OID="IG.SEC.AE" Name="Adverse Event" Repeating="Simple" Domain="AE" Type="Section">
+        <ItemRef ItemOID="IT.AE.AETERM" OrderNumber="1" Mandatory="Yes"/>
+        <ItemRef ItemOID="IT.AE.AESTDTC" OrderNumber="2" Mandatory="Yes"/>
+        <ItemRef ItemOID="IT.AE.AESER" OrderNumber="3" Mandatory="Yes"/>
+        <ItemRef ItemOID="IT.AE.AESEV" OrderNumber="4" Mandatory="No"/>
+      </ItemGroupDef>
+      <ItemGroupDef OID="IG.SEC.VS" Name="Vital Signs" Repeating="No" Type="Section">
+        <!-- no OrderNumbers: an ItemRef, a nested Concept and an ItemRef render in document order -->
+        <ItemRef ItemOID="IT.VS.VSPERF" Mandatory="Yes"/>
+        <ItemGroupRef ItemGroupOID="IG.CON.SYSBP" Mandatory="No"/>
+        <ItemRef ItemOID="IT.VS.VSDTC" Mandatory="No"/>
+        <Alias Context="SDTM" Name="VS (Vital Signs)"/>
+      </ItemGroupDef>
+      <ItemGroupDef OID="IG.CON.SYSBP" Name="Systolic Blood Pressure" Repeating="No" Type="Concept">
+        <ItemRef ItemOID="IT.VS.SYSBP" OrderNumber="1" Mandatory="No" UnitsItemOID="IT.VS.SYSBPU"/>
+        <ItemRef ItemOID="IT.VS.SYSBPU" OrderNumber="2" Mandatory="No"/>
+        <ItemRef ItemOID="IT.VS.VSPOS" OrderNumber="3" Mandatory="No"/>
+      </ItemGroupDef>
+      <ItemGroupDef OID="IG.SEC.DM" Name="Demographics" Repeating="No" Domain="DM" Type="Section">
+        <ItemRef ItemOID="IT.DM.BRTHDTC" OrderNumber="1" Mandatory="Yes"/>
+        <ItemRef ItemOID="IT.DM.SEX" OrderNumber="2" Mandatory="Yes"/>
+        <ItemRef ItemOID="IT.DM.AGE" OrderNumber="3" Mandatory="No" MethodOID="MT.AGE" UnitsItemOID="IT.DM.AGEU"/>
+        <ItemRef ItemOID="IT.DM.AGEU" OrderNumber="4" Mandatory="No"/>
+        <ItemRef ItemOID="IT.DM.NOTE" OrderNumber="5" Mandatory="No"/>
+      </ItemGroupDef>
+      <ItemGroupDef OID="IG.SEC.CM.TAKEN" Name="Medications taken?" Repeating="No" Type="Section">
+        <ItemRef ItemOID="IT.CM.CMYN" Mandatory="Yes"/>
+        <Alias Context="SDTM" Name="CM"/>
+      </ItemGroupDef>
+      <ItemGroupDef OID="IG.SEC.CM" Name="Medication" Repeating="Simple" Type="Section">
+        <Description>
+          <TranslatedText xml:lang="en" Type="text/plain">Record all medications taken.</TranslatedText>
+          <TranslatedText xml:lang="en" Type="text/html"><div xmlns="http://www.w3.org/1999/xhtml"><p>Record <b>all</b> medications taken.</p></div></TranslatedText>
+        </Description>
+        <ItemRef ItemOID="IT.CM.CMTRT" OrderNumber="1" Mandatory="Yes"/>
+        <ItemRef ItemOID="IT.CM.CMDOSE" OrderNumber="2" Mandatory="No"/>
+        <ItemRef ItemOID="IT.CM.CMINDC" OrderNumber="3" Mandatory="No"/>
+        <ItemRef ItemOID="IT.CM.CMSTDTC" OrderNumber="4" Mandatory="No"/>
+        <ItemRef ItemOID="IT.CM.CMSTRF" OrderNumber="5" Mandatory="No"/>
+        <Alias Context="formSectionAnnotation" Name="CM"/>
+        <Alias Context="formSectionCompletionInstruction" Name="One row per medication."/>
+      </ItemGroupDef>
+      <!-- items -->
+      <ItemDef OID="IT.AE.AETERM" Name="AETERM" DataType="text" Length="200">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Adverse event term</TranslatedText>
+        </Question>
+        <Alias Context="SDTM" Name="AETERM"/>
+      </ItemDef>
+      <ItemDef OID="IT.AE.AESTDTC" Name="AESTDTC" DataType="date">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Start date</TranslatedText>
+        </Question>
+        <Alias Context="SDTM" Name="AESTDTC"/>
+      </ItemDef>
+      <ItemDef OID="IT.AE.AESER" Name="AESER" DataType="text">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Serious?</TranslatedText>
+        </Question>
+        <CodeListRef CodeListOID="CL.NY"/>
+        <Alias Context="SDTM" Name="AESER"/>
+      </ItemDef>
+      <ItemDef OID="IT.AE.AESEV" Name="AESEV" DataType="text">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Severity</TranslatedText>
+        </Question>
+        <CodeListRef CodeListOID="CL.AESEV"/>
+        <Alias Context="SDTM" Name="AESEV"/>
+      </ItemDef>
+      <ItemDef OID="IT.VS.VSPERF" Name="VSPERF" DataType="text">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Were vital signs performed?</TranslatedText>
+        </Question>
+        <CodeListRef CodeListOID="CL.NY"/>
+        <Alias Context="SDTM" Name="[NOT SUBMITTED]; VSSTAT = NOT DONE when VSTESTCD = VSALL"/>
+      </ItemDef>
+      <ItemDef OID="IT.VS.VSDTC" Name="VSDTC" DataType="date">
+        <Prompt>
+          <TranslatedText xml:lang="en" Type="text/plain">Date</TranslatedText>
+        </Prompt>
+        <Alias Context="SDTM" Name="VSDTC"/>
+      </ItemDef>
+      <ItemDef OID="IT.VS.SYSBP" Name="SYSBP" DataType="integer" Length="3">
+        <Prompt>
+          <TranslatedText xml:lang="en" Type="text/plain">Systolic BP</TranslatedText>
+        </Prompt>
+        <CRFCompletionInstructions>
+          <TranslatedText xml:lang="en" Type="text/plain">Record after 5 minutes seated.</TranslatedText>
+        </CRFCompletionInstructions>
+        <Alias Context="SDTM" Name="VSORRES when VSTESTCD = SYSBP"/>
+      </ItemDef>
+      <ItemDef OID="IT.VS.SYSBPU" Name="SYSBPU" DataType="text">
+        <Prompt>
+          <TranslatedText xml:lang="en" Type="text/plain">Unit</TranslatedText>
+        </Prompt>
+        <CodeListRef CodeListOID="CL.VSU"/>
+        <Alias Context="SDTM" Name="VSORRESU = mmHg when VSTESTCD = SYSBP"/>
+      </ItemDef>
+      <ItemDef OID="IT.VS.VSPOS" Name="VSPOS" DataType="text">
+        <Prompt>
+          <TranslatedText xml:lang="en" Type="text/plain">Position</TranslatedText>
+        </Prompt>
+        <CodeListRef CodeListOID="CL.VSPOS"/>
+        <Alias Context="SDTM" Name="VSPOS when VSTESTCD = SYSBP"/>
+      </ItemDef>
+      <ItemDef OID="IT.DM.BRTHDTC" Name="BRTHDTC" DataType="date">
+        <Prompt>
+          <TranslatedText xml:lang="en" Type="text/plain">Date of birth</TranslatedText>
+        </Prompt>
+        <Alias Context="SDTM" Name="BRTHDTC"/>
+      </ItemDef>
+      <ItemDef OID="IT.DM.SEX" Name="SEX" DataType="text">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Sex</TranslatedText>
+        </Question>
+        <CodeListRef CodeListOID="CL.SEX"/>
+        <Alias Context="SDTM" Name="SEX"/>
+      </ItemDef>
+      <ItemDef OID="IT.DM.AGE" Name="AGE" DataType="integer" Length="3">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Age</TranslatedText>
+        </Question>
+        <Alias Context="SDTM" Name="AGE"/>
+      </ItemDef>
+      <ItemDef OID="IT.DM.AGEU" Name="AGEU" DataType="text">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Age unit</TranslatedText>
+        </Question>
+        <CodeListRef CodeListOID="CL.AGEU"/>
+        <Alias Context="SDTM" Name="AGEU"/>
+      </ItemDef>
+      <ItemDef OID="IT.DM.NOTE" Name="NOTE" DataType="text" Length="40">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Note</TranslatedText>
+        </Question>
+        <Alias Context="SDTM" Name="see protocol section 5"/>
+      </ItemDef>
+      <ItemDef OID="IT.CM.CMYN" Name="CMYN" DataType="text">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Were any medications taken?</TranslatedText>
+        </Question>
+        <CodeListRef CodeListOID="CL.NY"/>
+        <Alias Context="SDTM" Name="[NOT SUBMITTED]"/>
+      </ItemDef>
+      <ItemDef OID="IT.CM.CMTRT" Name="CMTRT" DataType="text" Length="100">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Medication name</TranslatedText>
+        </Question>
+        <Alias Context="SDTM" Name="CMTRT"/>
+      </ItemDef>
+      <ItemDef OID="IT.CM.CMDOSE" Name="CMDOSE" DataType="float">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Dose</TranslatedText>
+        </Question>
+        <Alias Context="SDTM" Name="CMDOSE;CMDOSTXT"/>
+      </ItemDef>
+      <ItemDef OID="IT.CM.CMINDC" Name="CMINDC" DataType="text" Length="100">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Indication</TranslatedText>
+        </Question>
+        <Alias Context="SDTM" Name="CMINDC in SUPPCM"/>
+      </ItemDef>
+      <ItemDef OID="IT.CM.CMSTDTC" Name="CMSTDTC" DataType="date">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Start date</TranslatedText>
+        </Question>
+        <Alias Context="SDTM" Name="CMSTDTC"/>
+      </ItemDef>
+      <ItemDef OID="IT.CM.CMSTRF" Name="CMSTRF" DataType="text">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">Started relative to the study</TranslatedText>
+        </Question>
+        <CodeListRef CodeListOID="CL.STRF"/>
+        <Alias Context="SDTM" Name="[NOT SUBMITTED];CMSTRF;CMSTRTPT"/>
+      </ItemDef>
+      <!-- codelists -->
+      <CodeList OID="CL.NY" Name="No Yes Response" DataType="text">
+        <CodeListItem CodedValue="N">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">No</TranslatedText>
+          </Decode>
+        </CodeListItem>
+        <CodeListItem CodedValue="Y">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">Yes</TranslatedText>
+          </Decode>
+        </CodeListItem>
+      </CodeList>
+      <CodeList OID="CL.AESEV" Name="Severity" DataType="text">
+        <CodeListItem CodedValue="MILD">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">Mild</TranslatedText>
+          </Decode>
+        </CodeListItem>
+        <CodeListItem CodedValue="MODERATE">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">Moderate</TranslatedText>
+          </Decode>
+        </CodeListItem>
+        <CodeListItem CodedValue="SEVERE">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">Severe</TranslatedText>
+          </Decode>
+        </CodeListItem>
+      </CodeList>
+      <CodeList OID="CL.VSU" Name="Blood Pressure Unit" DataType="text">
+        <CodeListItem CodedValue="mmHg">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">mmHg</TranslatedText>
+          </Decode>
+        </CodeListItem>
+      </CodeList>
+      <CodeList OID="CL.VSPOS" Name="Position" DataType="text">
+        <CodeListItem CodedValue="SITTING">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">Sitting</TranslatedText>
+          </Decode>
+        </CodeListItem>
+        <CodeListItem CodedValue="STANDING">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">Standing</TranslatedText>
+          </Decode>
+        </CodeListItem>
+        <CodeListItem CodedValue="SUPINE">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">Supine</TranslatedText>
+          </Decode>
+        </CodeListItem>
+      </CodeList>
+      <CodeList OID="CL.SEX" Name="Sex" DataType="text">
+        <CodeListItem CodedValue="M">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">Male</TranslatedText>
+          </Decode>
+          <Alias Context="SDTM" Name="DM.SEX=M"/>
+        </CodeListItem>
+        <CodeListItem CodedValue="F">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">Female</TranslatedText>
+          </Decode>
+          <Alias Context="SDTM" Name="DM.SEX=F"/>
+        </CodeListItem>
+      </CodeList>
+      <CodeList OID="CL.AGEU" Name="Age Unit" DataType="text">
+        <CodeListItem CodedValue="YEARS">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">Years</TranslatedText>
+          </Decode>
+        </CodeListItem>
+        <CodeListItem CodedValue="MONTHS">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">Months</TranslatedText>
+          </Decode>
+        </CodeListItem>
+      </CodeList>
+      <CodeList OID="CL.STRF" Name="Relative to Reference Period" DataType="text">
+        <CodeListItem CodedValue="BEFORE">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">Before</TranslatedText>
+          </Decode>
+        </CodeListItem>
+        <CodeListItem CodedValue="DURING">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">During</TranslatedText>
+          </Decode>
+        </CodeListItem>
+        <CodeListItem CodedValue="AFTER">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">After</TranslatedText>
+          </Decode>
+        </CodeListItem>
+        <CodeListItem CodedValue="DURING/AFTER">
+          <Decode>
+            <TranslatedText xml:lang="en" Type="text/plain">During and after</TranslatedText>
+          </Decode>
+        </CodeListItem>
+      </CodeList>
+      <ConditionDef OID="CD.CMTAKEN" Name="Medications taken">
+        <Description>
+          <TranslatedText xml:lang="en" Type="text/plain">Collected only when medications were taken</TranslatedText>
+        </Description>
+        <MethodSignature/>
+        <FormalExpression Context="XPath">
+          <Code>IT.CM.CMYN = 'Y'</Code>
+        </FormalExpression>
+      </ConditionDef>
+      <MethodDef OID="MT.AGE" Name="Age derivation" Type="Computation">
+        <Description>
+          <TranslatedText xml:lang="en" Type="text/plain">Years between the date of birth and the informed consent date</TranslatedText>
+        </Description>
+        <MethodSignature/>
+      </MethodDef>
+      <Leaf ID="LF.acrf" xlink:href="acrf.pdf">
+        <Title>Annotated CRF</Title>
+      </Leaf>
+    </MetaDataVersion>
+  </Study>
+</ODM>

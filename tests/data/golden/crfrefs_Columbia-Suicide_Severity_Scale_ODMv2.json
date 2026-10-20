@@ -1,0 +1,478 @@
+{
+  "crf_file": "tests/data/Columbia-Suicide_Severity_Scale_ODMv2.xml",
+  "model_package": "odm_2_0",
+  "odmlib_version": "(any)",
+  "permissive": false,
+  "errors_only": false,
+  "counts": {
+    "definitions": 191,
+    "references": 298,
+    "errors": 12,
+    "warnings": 15
+  },
+  "findings": [
+    {
+      "check": "duplicate_oid",
+      "severity": "error",
+      "oid": "TR.3-BRANCH-DESC",
+      "attribute": null,
+      "expected_element": null,
+      "actual_element": "Transition",
+      "message": "OID 'TR.3-BRANCH-DESC' is defined by Transition (#12) and redefined by Transition (#13) in MetaDataVersion MV.CSSRS.001",
+      "detail": "defined by Transition (#12) and redefined by Transition (#13)",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]"
+        },
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]"
+        }
+      ]
+    },
+    {
+      "check": "undefined_reference",
+      "severity": "error",
+      "oid": "Active_Suicidal_Ideation_with_Some_Intent_Yes",
+      "attribute": "ConditionOID",
+      "expected_element": "ConditionDef",
+      "actual_element": null,
+      "message": "ConditionOID 'Active_Suicidal_Ideation_with_Some_Intent_Yes' expects a ConditionDef; no element defines this OID",
+      "detail": "expects a ConditionDef; no element defines this OID",
+      "locations": [
+        {
+          "element": "TargetTransition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]/Branching[BR.4]"
+        }
+      ]
+    },
+    {
+      "check": "undefined_reference",
+      "severity": "error",
+      "oid": "CL.Other_Protective_Factors",
+      "attribute": "CollectionExceptionConditionOID",
+      "expected_element": "ConditionDef",
+      "actual_element": null,
+      "message": "CollectionExceptionConditionOID 'CL.Other_Protective_Factors' expects a ConditionDef; no element defines this OID",
+      "detail": "expects a ConditionDef; no element defines this OID",
+      "locations": [
+        {
+          "element": "ItemRef",
+          "path": "MetaDataVersion[MV.CSSRS.001]/ItemGroupDef[IG.Other_Protective_Factors]"
+        }
+      ]
+    },
+    {
+      "check": "undefined_reference",
+      "severity": "error",
+      "oid": "COND.1_and_2_negative",
+      "attribute": "ConditionOID",
+      "expected_element": "ConditionDef",
+      "actual_element": null,
+      "message": "ConditionOID 'COND.1_and_2_negative' expects a ConditionDef; no element defines this OID",
+      "detail": "expects a ConditionDef; no element defines this OID",
+      "locations": [
+        {
+          "element": "TargetTransition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]/Branching[BR.2_OUT]"
+        }
+      ]
+    },
+    {
+      "check": "undefined_reference",
+      "severity": "error",
+      "oid": "COND.2_negative",
+      "attribute": "ConditionOID",
+      "expected_element": "ConditionDef",
+      "actual_element": null,
+      "message": "ConditionOID 'COND.2_negative' expects a ConditionDef; no element defines this OID",
+      "detail": "expects a ConditionDef; no element defines this OID",
+      "locations": [
+        {
+          "element": "TargetTransition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]/Branching[BR.2_OUT]"
+        }
+      ]
+    },
+    {
+      "check": "undefined_reference",
+      "severity": "error",
+      "oid": "COND.Active_Suicidal_Ideation_with_Any_Methods_Yes",
+      "attribute": "ConditionOID",
+      "expected_element": "ConditionDef",
+      "actual_element": null,
+      "message": "ConditionOID 'COND.Active_Suicidal_Ideation_with_Any_Methods_Yes' expects a ConditionDef; no element defines this OID",
+      "detail": "expects a ConditionDef; no element defines this OID",
+      "locations": [
+        {
+          "element": "TargetTransition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]/Branching[BR.3]"
+        }
+      ]
+    },
+    {
+      "check": "undefined_reference",
+      "severity": "error",
+      "oid": "COND.Active_Suicidal_Ideation_with_Specific_Plan_and_Intent_Yes",
+      "attribute": "ConditionOID",
+      "expected_element": "ConditionDef",
+      "actual_element": null,
+      "message": "ConditionOID 'COND.Active_Suicidal_Ideation_with_Specific_Plan_and_Intent_Yes' expects a ConditionDef; no element defines this OID",
+      "detail": "expects a ConditionDef; no element defines this OID",
+      "locations": [
+        {
+          "element": "TargetTransition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]/Branching[BR.5]"
+        }
+      ]
+    },
+    {
+      "check": "undefined_reference",
+      "severity": "error",
+      "oid": "COND.Non-Specific_Active_Suicidal_Thoughts_Yes",
+      "attribute": "ConditionOID",
+      "expected_element": "ConditionDef",
+      "actual_element": null,
+      "message": "ConditionOID 'COND.Non-Specific_Active_Suicidal_Thoughts_Yes' expects a ConditionDef; no element defines this OID",
+      "detail": "expects a ConditionDef; no element defines this OID",
+      "locations": [
+        {
+          "element": "TargetTransition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]/Branching[BR.2]"
+        }
+      ]
+    },
+    {
+      "check": "undefined_reference",
+      "severity": "error",
+      "oid": "COND.Other_Risk_Factors",
+      "attribute": "CollectionExceptionConditionOID",
+      "expected_element": "ConditionDef",
+      "actual_element": null,
+      "message": "CollectionExceptionConditionOID 'COND.Other_Risk_Factors' expects a ConditionDef; no element defines this OID",
+      "detail": "expects a ConditionDef; no element defines this OID",
+      "locations": [
+        {
+          "element": "ItemRef",
+          "path": "MetaDataVersion[MV.CSSRS.001]/ItemGroupDef[IG.Other_Risk_Factors]"
+        }
+      ]
+    },
+    {
+      "check": "undefined_reference",
+      "severity": "error",
+      "oid": "COND.Recent_loss_or_other_significant_negative_event_Description",
+      "attribute": "CollectionExceptionConditionOID",
+      "expected_element": "ConditionDef",
+      "actual_element": null,
+      "message": "CollectionExceptionConditionOID 'COND.Recent_loss_or_other_significant_negative_event_Description' expects a ConditionDef; no element defines this OID",
+      "detail": "expects a ConditionDef; no element defines this OID",
+      "locations": [
+        {
+          "element": "ItemRef",
+          "path": "MetaDataVersion[MV.CSSRS.001]/ItemGroupDef[IG.Activating_Events_Recent]"
+        }
+      ]
+    },
+    {
+      "check": "undefined_reference",
+      "severity": "error",
+      "oid": "IT.BR4",
+      "attribute": "SourceOID",
+      "expected_element": "StudyEventGroupDef or StudyEventDef or ItemGroupDef or ItemDef or Branching",
+      "actual_element": null,
+      "message": "SourceOID 'IT.BR4' expects a StudyEventGroupDef or StudyEventDef or ItemGroupDef or ItemDef or Branching; no element defines this OID",
+      "detail": "expects a StudyEventGroupDef or StudyEventDef or ItemGroupDef or ItemDef or Branching; no element defines this OID",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]/Transition[TR.4-BRANCH-5]"
+        }
+      ]
+    },
+    {
+      "check": "undefined_reference",
+      "severity": "error",
+      "oid": "IT.Self-injury_behavior",
+      "attribute": "ItemOID",
+      "expected_element": "ItemDef",
+      "actual_element": null,
+      "message": "ItemOID 'IT.Self-injury_behavior' expects an ItemDef; no element defines this OID",
+      "detail": "expects an ItemDef; no element defines this OID",
+      "locations": [
+        {
+          "element": "ItemRef",
+          "path": "MetaDataVersion[MV.CSSRS.001]/ItemGroupDef[IG.Self-injury_behavior]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "COND.Questions_1_and_2_negative",
+      "attribute": null,
+      "expected_element": "ConditionDef",
+      "actual_element": "ConditionDef",
+      "message": "ConditionDef 'COND.Questions_1_and_2_negative' is defined but never referenced (expected via CollectionExceptionConditionOID or ConditionOID or EndConditionOID or StartConditionOID)",
+      "detail": "ConditionDef defined but never referenced (expected via CollectionExceptionConditionOID or ConditionOID or EndConditionOID or StartConditionOID)",
+      "locations": [
+        {
+          "element": "ConditionDef",
+          "path": "MetaDataVersion[MV.CSSRS.001]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "IT.Aborted_or_self-interrupted_attempt",
+      "attribute": null,
+      "expected_element": "ItemDef",
+      "actual_element": "ItemDef",
+      "message": "ItemDef 'IT.Aborted_or_self-interrupted_attempt' is defined but never referenced (expected via ItemOID or UnitsItemOID)",
+      "detail": "ItemDef defined but never referenced (expected via ItemOID or UnitsItemOID)",
+      "locations": [
+        {
+          "element": "ItemDef",
+          "path": "MetaDataVersion[MV.CSSRS.001]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "IT.Any_suicidal_self-injury_or_aggressive_behavior",
+      "attribute": null,
+      "expected_element": "ItemDef",
+      "actual_element": "ItemDef",
+      "message": "ItemDef 'IT.Any_suicidal_self-injury_or_aggressive_behavior' is defined but never referenced (expected via ItemOID or UnitsItemOID)",
+      "detail": "ItemDef defined but never referenced (expected via ItemOID or UnitsItemOID)",
+      "locations": [
+        {
+          "element": "ItemDef",
+          "path": "MetaDataVersion[MV.CSSRS.001]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "IT.Attempt_date",
+      "attribute": null,
+      "expected_element": "ItemDef",
+      "actual_element": "ItemDef",
+      "message": "ItemDef 'IT.Attempt_date' is defined but never referenced (expected via ItemOID or UnitsItemOID)",
+      "detail": "ItemDef defined but never referenced (expected via ItemOID or UnitsItemOID)",
+      "locations": [
+        {
+          "element": "ItemDef",
+          "path": "MetaDataVersion[MV.CSSRS.001]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "IT.Self-injury_behavior_without_suicide_intent",
+      "attribute": null,
+      "expected_element": "ItemDef",
+      "actual_element": "ItemDef",
+      "message": "ItemDef 'IT.Self-injury_behavior_without_suicide_intent' is defined but never referenced (expected via ItemOID or UnitsItemOID)",
+      "detail": "ItemDef defined but never referenced (expected via ItemOID or UnitsItemOID)",
+      "locations": [
+        {
+          "element": "ItemDef",
+          "path": "MetaDataVersion[MV.CSSRS.001]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "TR.1-BRANCH",
+      "attribute": null,
+      "expected_element": "Transition",
+      "actual_element": "Transition",
+      "message": "Transition 'TR.1-BRANCH' is defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "detail": "Transition defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "TR.1-DESC-2",
+      "attribute": null,
+      "expected_element": "Transition",
+      "actual_element": "Transition",
+      "message": "Transition 'TR.1-DESC-2' is defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "detail": "Transition defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "TR.2-BRANCH",
+      "attribute": null,
+      "expected_element": "Transition",
+      "actual_element": "Transition",
+      "message": "Transition 'TR.2-BRANCH' is defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "detail": "Transition defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "TR.2-DESC-BRANCH",
+      "attribute": null,
+      "expected_element": "Transition",
+      "actual_element": "Transition",
+      "message": "Transition 'TR.2-DESC-BRANCH' is defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "detail": "Transition defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "TR.3-DESC-4",
+      "attribute": null,
+      "expected_element": "Transition",
+      "actual_element": "Transition",
+      "message": "Transition 'TR.3-DESC-4' is defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "detail": "Transition defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "TR.4-BRANCH",
+      "attribute": null,
+      "expected_element": "Transition",
+      "actual_element": "Transition",
+      "message": "Transition 'TR.4-BRANCH' is defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "detail": "Transition defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "TR.4-DESC-5",
+      "attribute": null,
+      "expected_element": "Transition",
+      "actual_element": "Transition",
+      "message": "Transition 'TR.4-DESC-5' is defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "detail": "Transition defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "TR.5-BRANCH",
+      "attribute": null,
+      "expected_element": "Transition",
+      "actual_element": "Transition",
+      "message": "Transition 'TR.5-BRANCH' is defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "detail": "Transition defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "TR.5-DESC-END",
+      "attribute": null,
+      "expected_element": "Transition",
+      "actual_element": "Transition",
+      "message": "Transition 'TR.5-DESC-END' is defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "detail": "Transition defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[MV.CSSRS.001]/WorkflowDef[WF.CSSRS_SUICIDAL_IDEATION]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "WF.CSSRS_SUICIDAL_IDEATION",
+      "attribute": null,
+      "expected_element": "WorkflowDef",
+      "actual_element": "WorkflowDef",
+      "message": "WorkflowDef 'WF.CSSRS_SUICIDAL_IDEATION' is defined but never referenced (expected via WorkflowOID)",
+      "detail": "WorkflowDef defined but never referenced (expected via WorkflowOID)",
+      "locations": [
+        {
+          "element": "WorkflowDef",
+          "path": "MetaDataVersion[MV.CSSRS.001]"
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "checked_attributes": [
+      "CodeListOID",
+      "CollectionExceptionConditionOID",
+      "ConditionOID",
+      "EndOID",
+      "ItemGroupOID",
+      "ItemOID",
+      "SourceOID",
+      "StartOID",
+      "StudyEventGroupOID",
+      "StudyEventOID",
+      "TargetOID",
+      "TargetTransitionOID"
+    ],
+    "skipped_attributes": [
+      "FileOID",
+      "PriorFileOID"
+    ],
+    "unchecked_elements": [
+      "Include"
+    ],
+    "unmapped_attributes": []
+  },
+  "notes": [
+    "ClinicalData (1) not examined: crfutils checks ODM v2.0 metadata only"
+  ]
+}

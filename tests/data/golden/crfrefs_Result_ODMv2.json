@@ -1,0 +1,181 @@
+{
+  "crf_file": "tests/data/Result_ODMv2.xml",
+  "model_package": "odm_2_0",
+  "odmlib_version": "(any)",
+  "permissive": false,
+  "errors_only": false,
+  "counts": {
+    "definitions": 121,
+    "references": 144,
+    "errors": 0,
+    "warnings": 9
+  },
+  "findings": [
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "AE",
+      "attribute": null,
+      "expected_element": "StudyEventDef",
+      "actual_element": "StudyEventDef",
+      "message": "StudyEventDef 'AE' is defined but never referenced (expected via StudyEventOID)",
+      "detail": "StudyEventDef defined but never referenced (expected via StudyEventOID)",
+      "locations": [
+        {
+          "element": "StudyEventDef",
+          "path": "MetaDataVersion[CES_MDV_V1]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "CL_NOTDONEE",
+      "attribute": null,
+      "expected_element": "CodeList",
+      "actual_element": "CodeList",
+      "message": "CodeList 'CL_NOTDONEE' is defined but never referenced (expected via CodeListOID or RoleCodeListOID)",
+      "detail": "CodeList defined but never referenced (expected via CodeListOID or RoleCodeListOID)",
+      "locations": [
+        {
+          "element": "CodeList",
+          "path": "MetaDataVersion[CES_MDV_V1]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "COND.SEX.MALE",
+      "attribute": null,
+      "expected_element": "ConditionDef",
+      "actual_element": "ConditionDef",
+      "message": "ConditionDef 'COND.SEX.MALE' is defined but never referenced (expected via CollectionExceptionConditionOID or ConditionOID or EndConditionOID or StartConditionOID)",
+      "detail": "ConditionDef defined but never referenced (expected via CollectionExceptionConditionOID or ConditionOID or EndConditionOID or StartConditionOID)",
+      "locations": [
+        {
+          "element": "ConditionDef",
+          "path": "MetaDataVersion[CES_MDV_V1]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "I_PREGNANCY",
+      "attribute": null,
+      "expected_element": "ItemDef",
+      "actual_element": "ItemDef",
+      "message": "ItemDef 'I_PREGNANCY' is defined but never referenced (expected via ItemOID or UnitsItemOID)",
+      "detail": "ItemDef defined but never referenced (expected via ItemOID or UnitsItemOID)",
+      "locations": [
+        {
+          "element": "ItemDef",
+          "path": "MetaDataVersion[CES_MDV_V1]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "I_SUBJECTINITIALS",
+      "attribute": null,
+      "expected_element": "ItemDef",
+      "actual_element": "ItemDef",
+      "message": "ItemDef 'I_SUBJECTINITIALS' is defined but never referenced (expected via ItemOID or UnitsItemOID)",
+      "detail": "ItemDef defined but never referenced (expected via ItemOID or UnitsItemOID)",
+      "locations": [
+        {
+          "element": "ItemDef",
+          "path": "MetaDataVersion[CES_MDV_V1]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "TR.BASELINE.WEEK_1",
+      "attribute": null,
+      "expected_element": "Transition",
+      "actual_element": "Transition",
+      "message": "Transition 'TR.BASELINE.WEEK_1' is defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "detail": "Transition defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[CES_MDV_V1]/WorkflowDef[WF.MAIN]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "TR.WEEK_1.WEEK_2",
+      "attribute": null,
+      "expected_element": "Transition",
+      "actual_element": "Transition",
+      "message": "Transition 'TR.WEEK_1.WEEK_2' is defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "detail": "Transition defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[CES_MDV_V1]/WorkflowDef[WF.MAIN]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "TR.WEEK_2.DIARY",
+      "attribute": null,
+      "expected_element": "Transition",
+      "actual_element": "Transition",
+      "message": "Transition 'TR.WEEK_2.DIARY' is defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "detail": "Transition defined but never referenced (expected via TargetTransitionOID or TransitionOID)",
+      "locations": [
+        {
+          "element": "Transition",
+          "path": "MetaDataVersion[CES_MDV_V1]/WorkflowDef[WF.MAIN]"
+        }
+      ]
+    },
+    {
+      "check": "orphan_definition",
+      "severity": "warning",
+      "oid": "WF.MAIN",
+      "attribute": null,
+      "expected_element": "WorkflowDef",
+      "actual_element": "WorkflowDef",
+      "message": "WorkflowDef 'WF.MAIN' is defined but never referenced (expected via WorkflowOID)",
+      "detail": "WorkflowDef defined but never referenced (expected via WorkflowOID)",
+      "locations": [
+        {
+          "element": "WorkflowDef",
+          "path": "MetaDataVersion[CES_MDV_V1]"
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "checked_attributes": [
+      "CodeListOID",
+      "CollectionExceptionConditionOID",
+      "EndOID",
+      "ItemGroupOID",
+      "ItemOID",
+      "MethodOID",
+      "SourceOID",
+      "StartOID",
+      "TargetOID"
+    ],
+    "skipped_attributes": [
+      "FileOID",
+      "PriorFileOID"
+    ],
+    "unchecked_elements": [
+      "Include"
+    ],
+    "unmapped_attributes": []
+  },
+  "notes": []
+}

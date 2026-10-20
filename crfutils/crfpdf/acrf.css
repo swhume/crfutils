@@ -1,0 +1,99 @@
+/*
+  crfpdf print stylesheet for the annotated CRF, applied by crfpdf to crfhtml's print-mode HTML.
+
+  crfpdf prepends the generated rules this file relies on: the @page size rules (letter or A4, and the landscape
+  "matrix" page) and the @font-face rules for the bundled Liberation Sans, under the family name "CRFUtils Sans".
+  WeasyPrint-only paged-media features (string-set, target-counter, leader, bookmark-level, named pages) live
+  here, not in the stylesheet, so the HTML stays portable.
+*/
+
+/* bookmarks are added by crfpdf's pypdf pass (Forms, Visits); CSS bookmarks would duplicate them */
+h1, h2, h3, h4, h5, h6 { bookmark-level: none; }
+
+@page {
+    margin: 0.75in;
+    font-family: "CRFUtils Sans", sans-serif;
+    font-size: 8pt;
+    color: #333;
+    @top-center { content: string(formname); }
+    @bottom-left { content: string(study); }
+    @bottom-center { content: "Page " counter(page) " of " counter(pages); }
+}
+@page :first {
+    @top-center { content: none; }
+}
+@page matrix {
+    @top-center { content: "Visit Matrix"; }
+}
+
+body { font-family: "CRFUtils Sans", Arial, Helvetica, sans-serif; font-size: 10pt; color: #000; margin: 0; }
+a { color: #000; text-decoration: none; }
+
+/* the running strings: the form name in the page header, the study name in the footer */
+.form-title { string-set: formname content(); }
+.doc-study { string-set: study content(); }
+
+/* the title page */
+.title-page h1.doc-title { font-size: 22pt; margin: 2in 0 0.5in 0; }
+table.title-meta { border-collapse: collapse; }
+table.title-meta th { text-align: left; padding: 3pt 1.5em 3pt 0; vertical-align: top; white-space: nowrap; }
+table.title-meta td { padding: 3pt 0; }
+
+/* the table of contents, with page numbers resolved after layout */
+.toc { break-before: page; }
+.toc-title, .matrix-title { font-size: 14pt; margin: 0 0 8pt 0; }
+ol.toc-list { list-style: none; padding: 0; margin: 0; }
+ol.toc-list li { margin: 3pt 0; }
+a.toc-link::after { content: leader('.') target-counter(attr(href), page); }
+
+/* the visit matrix, on a landscape page */
+.visit-matrix { page: matrix; break-before: page; }
+table.matrix { border-collapse: collapse; width: 100%; font-size: 9pt; }
+table.matrix th, table.matrix td { border: 1px solid #000; padding: 3pt 4pt; vertical-align: top; }
+table.matrix thead th { background: #e6e6e6; }
+table.matrix th.matrix-form { text-align: left; }
+table.matrix td.matrix-cell { text-align: center; }
+
+/* each form starts a page; its one table repeats its heading on continuation pages */
+.form { break-before: page; }
+.form-title { font-size: 14pt; margin: 0 0 4pt 0; }
+.form-annotations { margin: 0 0 6pt 0; }
+.description, .instruction { font-size: 8.5pt; font-weight: normal; margin: 2pt 0 0 0; white-space: pre-wrap; }
+table.crf { width: 100%; border-collapse: collapse; margin: 6pt 0 0 0; }
+table.crf thead { display: table-header-group; }
+table.crf tr { break-inside: avoid; }
+table.crf th, table.crf td { border: 1px solid #000; padding: 3pt 4pt; vertical-align: top; text-align: left; }
+table.crf thead th { background: #e6e6e6; font-weight: bold; }
+table.crf .col-question { width: 38%; }
+table.crf .col-response { width: 34%; }
+table.crf .col-anno { width: 28%; }
+tr.group-head td { background: #f0f0f0; font-weight: bold; }
+tr.group-head.type-Concept td { background: #f7f7f7; }
+tr.group-head.depth-2 .group-title { padding-left: 1em; }
+tr.group-head.depth-3 .group-title { padding-left: 2em; }
+tr.group-head.depth-4 .group-title { padding-left: 3em; }
+.missing { color: #a00; }
+.type { font-size: 8pt; color: #555; font-style: italic; }
+.mandatory { font-weight: bold; }
+.footnote { font-size: 8pt; margin-top: 4pt; }
+
+/* static controls */
+.field { display: inline-block; min-width: 1.6in; min-height: 11pt; border-bottom: 1px solid #000; }
+.field.number { min-width: 0.9in; }
+.field.date, .field.time, .field.datetime { color: #666; font-size: 8pt; letter-spacing: 1pt; }
+.field.prespecified { border: 1px solid #000; padding: 1pt 3pt; min-width: 0; }
+label.option { display: block; margin: 1pt 0; }
+.codelist-note { font-size: 8pt; color: #555; margin-top: 2pt; }
+.box { display: inline-block; width: 9pt; height: 9pt; border: 1px solid #000; margin-right: 4pt; vertical-align: -1pt; }
+.decode { margin-right: 4pt; }
+
+/* annotations, coloured by the domain they map to (1-4 by first appearance on the form; 0 unresolved) */
+.anno { display: inline-block; font-size: 9pt; border: 1px solid #000; padding: 1pt 3pt; margin: 1pt 3pt 1pt 0;
+        background: #fff; }
+.anno-form, .anno-section { font-weight: bold; }
+.anno[data-domain-index="1"] { background: #BFFFFF; }
+.anno[data-domain-index="2"] { background: #FFFF96; }
+.anno[data-domain-index="3"] { background: #96FF96; }
+.anno[data-domain-index="4"] { background: #FFBE9B; }
+
+.doc-footer { font-size: 8pt; color: #555; margin-top: 12pt; }

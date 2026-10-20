@@ -1,0 +1,53 @@
+{
+  "crf_file": "tests/data/crf_synthetic.xml",
+  "model_package": "odm_2_0",
+  "odmlib_version": "(any)",
+  "permissive": false,
+  "errors_only": false,
+  "counts": {
+    "definitions": 46,
+    "references": 50,
+    "errors": 0,
+    "warnings": 1
+  },
+  "findings": [
+    {
+      "check": "form_not_scheduled",
+      "severity": "warning",
+      "oid": "IG.FORM.AE/1",
+      "attribute": null,
+      "expected_element": null,
+      "actual_element": "ItemGroupDef",
+      "message": "Form ItemGroupDef 'IG.FORM.AE/1' is not referenced by any StudyEventDef",
+      "detail": "Form is not referenced by any StudyEventDef",
+      "locations": [
+        {
+          "element": "ItemGroupDef",
+          "path": "MetaDataVersion[MDV.1]/ItemGroupDef[IG.FORM.AE/1]"
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "checked_attributes": [
+      "CodeListOID",
+      "CollectionExceptionConditionOID",
+      "ItemGroupOID",
+      "ItemOID",
+      "LeafID",
+      "MethodOID",
+      "StudyEventGroupOID",
+      "StudyEventOID",
+      "UnitsItemOID"
+    ],
+    "skipped_attributes": [
+      "FileOID",
+      "PriorFileOID"
+    ],
+    "unchecked_elements": [
+      "Include"
+    ],
+    "unmapped_attributes": []
+  },
+  "notes": []
+}
