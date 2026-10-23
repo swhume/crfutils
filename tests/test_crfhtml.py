@@ -86,7 +86,8 @@ def test_mixed_children_render_in_document_order(render):
     vs = [f for f in _forms(doc) if f.get("data-form-oid") == "IG.FORM.VS"][0]
 
     assert [(row.get("data-item-oid") or row.get("data-group-oid")) for row in _rows(vs)] == \
-           ["IG.SEC.VS", "IT.VS.VSPERF", "IG.CON.SYSBP", "IT.VS.SYSBP", "IT.VS.SYSBPU", "IT.VS.VSPOS", "IT.VS.VSDTC"]
+           ["IG.SEC.VS", "IT.VS.VSPERF", "IG.CON.SYSBP", "IT.VS.SYSBP", "IT.VS.SYSBPU", "IT.VS.VSPOS", "IT.VS.VSLOC",
+            "IT.VS.VSDTC"]
     assert _rows(vs)[3].get("data-group-path") == "IG.FORM.VS > IG.SEC.VS > IG.CON.SYSBP"
 
 

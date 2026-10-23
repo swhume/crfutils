@@ -181,6 +181,19 @@ def test_target_key_canonical_form():
     assert A.target_key(None, "VSORRES") == "VSORRES"
 
 
+def test_parsed_conditions_and_variables_come_from_the_annotation():
+    target = _parse("VSORRES when VSTESTCD = SYSBP").targets[0]
+    assert target.variable_source == "annotation" and target.where[0].source == "annotation"
+    assert A.annotation_key(target) == target.key
+
+
+def test_annotation_key_leaves_out_concept_conditions():
+    where = (A.Condition("LBTESTCD", "EQ", ("PT",)), A.Condition("LBSPEC", "EQ", ("BLOOD",), source="concept"))
+    target = A.Target("LB", "prefix", "LBORRES", None, where, None, A.target_key("LB", "LBORRES", where))
+    assert target.key == "LB.LBORRES where LBSPEC = BLOOD and LBTESTCD = PT"
+    assert A.annotation_key(target) == "LB.LBORRES where LBTESTCD = PT"
+
+
 def test_whitespace_is_normalized():
     assert _parse("  VSORRES   when   VSTESTCD  =  SYSBP ").targets[0].key == "VS.VSORRES where VSTESTCD = SYSBP"
     assert A.normalize("a\n  b\tc") == "a b c"

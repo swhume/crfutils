@@ -180,7 +180,10 @@ def _child_ref(child) -> D.ChildRef:
     kind = type(child).__name__
     oid_attr = {"ItemRef": "ItemOID", "ItemGroupRef": "ItemGroupOID", "StudyEventRef": "StudyEventOID",
                 "StudyEventGroupRef": "StudyEventGroupOID"}[kind]
-    return D.ChildRef(kind, attr(child, oid_attr), _order(attr(child, "OrderNumber")), attr(child, "Mandatory"))
+    return D.ChildRef(kind, attr(child, oid_attr), _order(attr(child, "OrderNumber")), attr(child, "Mandatory"),
+                      origins=tuple(D.Origin(attr(origin, "Type"), attr(origin, "Source"))
+                                    for origin in attr(child, "Origin") or []),
+                      prespecified_value=attr(child, "PreSpecifiedValue"))
 
 
 def design_from_model(odm) -> D.DesignData:

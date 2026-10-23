@@ -5,8 +5,8 @@
   "permissive": false,
   "errors_only": false,
   "counts": {
-    "definitions": 46,
-    "references": 50,
+    "definitions": 48,
+    "references": 52,
     "errors": 0,
     "warnings": 1
   },

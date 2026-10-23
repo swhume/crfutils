@@ -49,7 +49,7 @@ def test_synthetic_has_one_warning_and_no_errors():
     assert not result.has_errors
     assert [(f.check, f.oid, f.severity) for f in result.findings] == [("form_not_scheduled", "IG.FORM.AE/1", "warning")]
     assert result.findings[0].locations[0].path == "MetaDataVersion[MDV.1]/ItemGroupDef[IG.FORM.AE/1]"
-    assert result.definition_count == 46 and result.reference_count == 50
+    assert result.definition_count == 48 and result.reference_count == 52
     assert result.checked_attributes == ["CodeListOID", "CollectionExceptionConditionOID", "ItemGroupOID", "ItemOID",
                                          "LeafID", "MethodOID", "StudyEventGroupOID", "StudyEventOID", "UnitsItemOID"]
     assert result.skipped_attributes == ["FileOID", "PriorFileOID"]
@@ -328,11 +328,11 @@ def test_errors_only_and_max_locations(edited_crf):
     checker = CrfRefChecker(edited_crf(edit))
     text = checker.check_to_string(errors_only=True, max_locations=2)
     assert "WARNINGS" not in text and "(warnings suppressed)" in text
-    assert "... and 18 more" in text
+    assert "... and 20 more" in text
     assert "... and" not in checker.check_to_string(max_locations=0)
     report = json.loads(checker.check_to_json(errors_only=True))
     assert report["errors_only"] is True and report["counts"]["warnings"] == 0
-    assert len(report["findings"][0]["locations"]) == 20
+    assert len(report["findings"][0]["locations"]) == 22
 
 
 def test_clean_listing_and_json():

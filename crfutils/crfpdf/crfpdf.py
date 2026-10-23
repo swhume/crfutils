@@ -1,7 +1,9 @@
 """Submission-ready annotated CRF PDF from an ODM v2.0 CRF, plus the page-references JSON.
 
 The pipeline: crfhtml renders the CRF in print mode (title page, TOC, visit matrix, one page-broken section per
-form, static controls); crfpdf parses every annotation, colours it by domain, injects the print CSS and the
+form, static controls); crfpdf parses every annotation, resolves its SDTM targets and proposed origin with
+mapping.py (the item's mapping instructions and the conditions its concept group implies), colours it by
+domain, injects the print CSS and the
 bundled fonts, renders with WeasyPrint, reads each annotation's physical page from WeasyPrint's layout, prunes
 the annotation anchors so only the forms become named destinations, and adds bookmarks, the page mode and the
 viewer preferences in a pypdf pass. WeasyPrint and pypdf are imported only inside render(), so the other
@@ -11,14 +13,15 @@ import hashlib
 import io
 import json
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Union
 
 from .. import __version__, _common
 from .. import annotations as A
-from .._design import AnnotationRecord
+from .. import mapping as M
+from .._design import CONCEPT, AnnotationRecord, ChildRef
 from ..crfhtml import CrfHtml, CrfHtmlGenerationError
 from . import pagerefs
 
@@ -42,6 +45,7 @@ MAX_WARNINGS_SHOWN = 5
 ANNOTATION_NOT_PAGINATED = "annotation_not_paginated"
 UNPARSED_ANNOTATION = "unparsed_annotation"
 DATASET_UNRESOLVED = "dataset_unresolved"
+SDTM_ALIAS_DISAGREES = "sdtm_alias_disagrees"
 FORM_ORDER = "form_page_order"
 
 
@@ -68,9 +72,12 @@ class FormPages:
 @dataclass(frozen=True)
 class AnnotationPages:
     record: AnnotationRecord
-    parsed: A.ParsedAnnotation
+    parsed: A.ParsedAnnotation      # corrected by the mapping instructions and enriched by the concept group
     id: str
     page: Union[int, None]
+    instruction: Union[M.MappingInstruction, None] = None   # the item's mapping instructions
+    item_ref: Union[ChildRef, None] = None                  # the ItemRef the annotated item is rendered from
+    origin: Union[M.ProposedOrigin, None] = None
 
 
 @dataclass(frozen=True)
@@ -196,7 +203,7 @@ class CrfPdf:
             if page is None:
                 warnings.append(Warning(ANNOTATION_NOT_PAGINATED, anno.record.text, anno.record.form_oid,
                                         anno.record.item_oid))
-            paginated.append(AnnotationPages(anno.record, anno.parsed, anno.id, page))
+            paginated.append(replace(anno, page=page))
         # only the forms become named destinations; the annotation anchors have served their purpose
         for page in document.pages:
             for name in list(page.anchors):
@@ -236,24 +243,39 @@ class CrfPdf:
 
     def _annotate(self, tree, design, warnings: list) -> list:
         """
-        parses every annotation span, records it, and sets data-domain-index on it: 1-4 by the order the
-        domain first appears on the form, 0 when the annotation names no resolvable domain
+        parses every annotation span, checks an item annotation against the item's mapping instructions, adds
+        the conditions its concept group implies, proposes an origin, records it, and sets data-domain-index on
+        the span: 1-4 by the order the domain first appears on the form, 0 when the annotation names no
+        resolvable domain
         """
         if self.title is None and design.data.study_name:
             self._set_title(tree, f"Annotated CRF - {design.data.study_name}")
         known = design.known_domains
+        concepts = [group.oid for group in design.data.groups.values() if group.type == CONCEPT]
         annotations = []
         for section in tree.getroot().iter("section"):
             if "form" not in (section.get("class") or "").split():
                 continue
-            order = []
+            spans, pairs, instructions = [], [], []
             for span in section.iter("span"):
                 if "anno" not in (span.get("class") or "").split():
                     continue
                 record = _record(span)
                 level = "group" if record.level in ("form", "section", "concept") else "item"
-                parsed = A.parse(record.text, level=level, source=record.source,
-                                 context_domain=design.context_domain(record.group_path), known_domains=known)
+                context = design.context_domain(record.group_path)
+                parsed = A.parse(record.text, level=level, source=record.source, context_domain=context,
+                                 known_domains=known)
+                item = design.data.items.get(record.item_oid) if record.item_oid else None
+                instruction = M.classify(M.instructions_text(item.aliases)) if item is not None else None
+                if record.level == "item":
+                    parsed, disagreement = M.correct(parsed, instruction, context, known)
+                    if disagreement:
+                        warnings.append(Warning(SDTM_ALIAS_DISAGREES, disagreement, record.form_oid, record.item_oid))
+                spans.append(span)
+                pairs.append((record, parsed))
+                instructions.append(instruction)
+            order = []
+            for span, (record, _), parsed, instruction in zip(spans, pairs, M.enrich(pairs, concepts), instructions):
                 domains = list(parsed.domains) + [t.dataset for t in parsed.targets if t.dataset]
                 index = 0
                 if domains:
@@ -265,7 +287,10 @@ class CrfPdf:
                     warnings.append(Warning(UNPARSED_ANNOTATION, record.text, record.form_oid, record.item_oid))
                 if A.DATASET_UNRESOLVED in parsed.warnings:
                     warnings.append(Warning(DATASET_UNRESOLVED, record.text, record.form_oid, record.item_oid))
-                annotations.append(AnnotationPages(record, parsed, span.get("id"), None))
+                item_ref = design.item_ref(record.group_path[-1], record.item_oid) if record.item_oid else None
+                origin = M.propose(parsed, instruction, item_ref.origins if item_ref is not None else ())
+                annotations.append(AnnotationPages(record, parsed, span.get("id"), None, instruction=instruction,
+                                                   item_ref=item_ref, origin=origin))
         return annotations
 
     @staticmethod

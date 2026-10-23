@@ -32,11 +32,20 @@ class Alias:
 
 
 @dataclass(frozen=True)
+class Origin:
+    """an ItemRef's Origin: where the item's data comes from"""
+    type: Union[str, None]          # @Type, "Collected" | "Derived" | "Protocol" | ...
+    source: Union[str, None]        # @Source, "Investigator" | "Sponsor" | "Subject" | "Vendor"
+
+
+@dataclass(frozen=True)
 class ChildRef:
     kind: str                       # "ItemRef" | "ItemGroupRef" | "StudyEventRef" | "StudyEventGroupRef"
     oid: str                        # the referenced OID
     order: Union[int, None]         # @OrderNumber
     mandatory: Union[str, None]     # @Mandatory, "Yes" | "No"
+    origins: tuple = ()             # Origin, in document order; ItemRef only
+    prespecified_value: Union[str, None] = None     # @PreSpecifiedValue; ItemRef only
 
 
 @dataclass(frozen=True)
@@ -275,6 +284,13 @@ class StudyDesign:
         """a group's ItemRef and ItemGroupRef children in render order"""
         group = self.data.groups.get(group_oid)
         return [] if group is None else sorted(group.children, key=sort_key)
+
+    def item_ref(self, group_oid: str, item_oid: str) -> Union[ChildRef, None]:
+        """a group's ItemRef to an item, or None"""
+        group = self.data.groups.get(group_oid)
+        if group is None:
+            return None
+        return next((c for c in group.children if c.kind == "ItemRef" and c.oid == item_oid), None)
 
     def walk(self, form_oid: str) -> list:
         """

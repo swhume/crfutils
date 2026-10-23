@@ -9,7 +9,10 @@
     CodeListItem, and one unparseable annotation;
   - a Section whose ItemRef, nested Concept and ItemRef have no OrderNumbers (document order);
   - codelists with two and with more than two items; Question-only and Prompt-only items; UnitsItemOID;
-    an xhtml TranslatedText; a MethodDef, a ConditionDef and an AnnotatedCRF Leaf.
+    an xhtml TranslatedText; a MethodDef, a ConditionDef and an AnnotatedCRF Leaf;
+  - the data-definition-engine shape crfpdf reads origins from: ItemRef Origins and a PreSpecifiedValue in
+    IG.CON.SYSBP, a prefilled sibling (VSLOC = ARM) beside value-level targets, and mappingInstructions of each
+    kind, including one (AEENDAT) that names a different SDTMIG variable (AEENDTC) than the SDTM alias.
 -->
 <ODM xmlns="http://www.cdisc.org/ns/odm/v2.0" xmlns:xlink="http://www.w3.org/1999/xlink"
      ODMVersion="2.0" FileType="Snapshot" Granularity="Metadata" FileOID="FILE.SYNTH.1"
@@ -64,10 +67,13 @@
       </ItemGroupDef>
       <!-- sections and concepts -->
       <ItemGroupDef OID="IG.SEC.AE" Name="Adverse Event" Repeating="Simple" Domain="AE" Type="Section">
-        <ItemRef ItemOID="IT.AE.AETERM" OrderNumber="1" Mandatory="Yes"/>
+        <ItemRef ItemOID="IT.AE.AETERM" OrderNumber="1" Mandatory="Yes">
+          <Origin Type="Collected" Source="Investigator"/>
+        </ItemRef>
         <ItemRef ItemOID="IT.AE.AESTDTC" OrderNumber="2" Mandatory="Yes"/>
         <ItemRef ItemOID="IT.AE.AESER" OrderNumber="3" Mandatory="Yes"/>
         <ItemRef ItemOID="IT.AE.AESEV" OrderNumber="4" Mandatory="No"/>
+        <ItemRef ItemOID="IT.AE.AEENDAT" OrderNumber="5" Mandatory="No"/>
       </ItemGroupDef>
       <ItemGroupDef OID="IG.SEC.VS" Name="Vital Signs" Repeating="No" Type="Section">
         <!-- no OrderNumbers: an ItemRef, a nested Concept and an ItemRef render in document order -->
@@ -77,9 +83,18 @@
         <Alias Context="SDTM" Name="VS (Vital Signs)"/>
       </ItemGroupDef>
       <ItemGroupDef OID="IG.CON.SYSBP" Name="Systolic Blood Pressure" Repeating="No" Type="Concept">
-        <ItemRef ItemOID="IT.VS.SYSBP" OrderNumber="1" Mandatory="No" UnitsItemOID="IT.VS.SYSBPU"/>
-        <ItemRef ItemOID="IT.VS.SYSBPU" OrderNumber="2" Mandatory="No"/>
-        <ItemRef ItemOID="IT.VS.VSPOS" OrderNumber="3" Mandatory="No"/>
+        <ItemRef ItemOID="IT.VS.SYSBP" OrderNumber="1" Mandatory="No" UnitsItemOID="IT.VS.SYSBPU">
+          <Origin Type="Collected" Source="Investigator"/>
+        </ItemRef>
+        <ItemRef ItemOID="IT.VS.SYSBPU" OrderNumber="2" Mandatory="No" PreSpecifiedValue="mmHg">
+          <Origin Type="Protocol" Source="Sponsor"/>
+        </ItemRef>
+        <ItemRef ItemOID="IT.VS.VSPOS" OrderNumber="3" Mandatory="No">
+          <Origin Type="Collected" Source="Investigator"/>
+        </ItemRef>
+        <ItemRef ItemOID="IT.VS.VSLOC" OrderNumber="4" Mandatory="No" PreSpecifiedValue="ARM">
+          <Origin Type="Protocol" Source="Sponsor"/>
+        </ItemRef>
       </ItemGroupDef>
       <ItemGroupDef OID="IG.SEC.DM" Name="Demographics" Repeating="No" Domain="DM" Type="Section">
         <ItemRef ItemOID="IT.DM.BRTHDTC" OrderNumber="1" Mandatory="Yes"/>
@@ -111,6 +126,7 @@
           <TranslatedText xml:lang="en" Type="text/plain">Adverse event term</TranslatedText>
         </Question>
         <Alias Context="SDTM" Name="AETERM"/>
+        <Alias Context="mappingInstructions" Name="Maps directly to the SDTMIG variable listed in the SDTMIG Target column."/>
       </ItemDef>
       <ItemDef OID="IT.AE.AESTDTC" Name="AESTDTC" DataType="date">
         <Question>
@@ -131,6 +147,13 @@
         </Question>
         <CodeListRef CodeListOID="CL.AESEV"/>
         <Alias Context="SDTM" Name="AESEV"/>
+      </ItemDef>
+      <ItemDef OID="IT.AE.AEENDAT" Name="AEENDAT" DataType="date">
+        <Question>
+          <TranslatedText xml:lang="en" Type="text/plain">End date</TranslatedText>
+        </Question>
+        <Alias Context="SDTM" Name="AEENDAT"/>
+        <Alias Context="mappingInstructions" Name="This does not map directly to an SDTMIG variable. For the SDTM submission dataset, concatenate all collected CDASH END DATE and TIME components and populate the SDTMIG variable AEENDTC in ISO 8601 format."/>
       </ItemDef>
       <ItemDef OID="IT.VS.VSPERF" Name="VSPERF" DataType="text">
         <Question>
@@ -167,6 +190,12 @@
         </Prompt>
         <CodeListRef CodeListOID="CL.VSPOS"/>
         <Alias Context="SDTM" Name="VSPOS when VSTESTCD = SYSBP"/>
+      </ItemDef>
+      <ItemDef OID="IT.VS.VSLOC" Name="VSLOC" DataType="text">
+        <Prompt>
+          <TranslatedText xml:lang="en" Type="text/plain">Location</TranslatedText>
+        </Prompt>
+        <Alias Context="SDTM" Name="VSLOC = ARM"/>
       </ItemDef>
       <ItemDef OID="IT.DM.BRTHDTC" Name="BRTHDTC" DataType="date">
         <Prompt>
@@ -218,6 +247,7 @@
           <TranslatedText xml:lang="en" Type="text/plain">Dose</TranslatedText>
         </Question>
         <Alias Context="SDTM" Name="CMDOSE;CMDOSTXT"/>
+        <Alias Context="mappingInstructions" Name="Numeric values map to CMDOSE in SDTM. Non-numeric values map to CMDOSTXT in SDTM."/>
       </ItemDef>
       <ItemDef OID="IT.CM.CMINDC" Name="CMINDC" DataType="text" Length="100">
         <Question>
@@ -237,6 +267,7 @@
         </Question>
         <CodeListRef CodeListOID="CL.STRF"/>
         <Alias Context="SDTM" Name="[NOT SUBMITTED];CMSTRF;CMSTRTPT"/>
+        <Alias Context="mappingInstructions" Name="This does not map directly to an SDTMIG variable. May be used to populate a value into an SDTMIG relative timing variable such as CMSTRF or CMSTRTPT."/>
       </ItemDef>
       <!-- codelists -->
       <CodeList OID="CL.NY" Name="No Yes Response" DataType="text">

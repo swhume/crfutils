@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Version 0.1.0](https://img.shields.io/badge/version-0.1.0-blue.svg)](pyproject.toml)
 [![Status: under development](https://img.shields.io/badge/status-under%20development-orange.svg)](#development)
-[![Coverage 91%](https://img.shields.io/badge/coverage-91%25-green.svg)](#development)
+[![Coverage 92%](https://img.shields.io/badge/coverage-92%25-green.svg)](#development)
 
 ## CDISC ODM v2.0 CRF utilities
 
@@ -60,7 +60,8 @@ title page, a table of contents with page numbers, the visit matrix, one page-br
 repeating table heading, every codelist option listed, the annotations coloured by domain, running headers and
 footers with "Page X of Y", bookmarks by form and by visit that open with the document, a named destination per
 form, embedded fonts and no encryption. Beside the PDF it writes `<pdf>.pagerefs.json`: the physical page of
-every annotation, indexed by `DATASET.VARIABLE[ where ...]`, which a Define-XML tool can turn into
+every annotation and a proposed Origin (Type, Source, pages) for every SDTM variable and value-level target,
+indexed by `DATASET.VARIABLE[ where ...]`, which a Define-XML tool can turn into `def:Origin` with
 `def:PDFPageRef` page references. It needs the optional `[pdf]` dependencies (WeasyPrint and pypdf).
 
 ## Installing crfutils
@@ -261,7 +262,7 @@ crfrefs -c nonconformant.xml --permissive
 ODM v2.0 OID reference/definition check
   File:  tests/data/crf_synthetic.xml
   Model: ODM v2.0 (odmlib odm_2_0, odmlib 0.3.0)
-  Scope: 46 definitions, 50 references across 9 checked attributes
+  Scope: 48 definitions, 52 references across 9 checked attributes
 
 WARNINGS (1)
 
@@ -298,7 +299,7 @@ crfmetrics -c tests/data/crf_synthetic.xml --json -o metrics.json
 ```
 ODM v2.0 CRF metrics
   File:     tests/data/crf_synthetic.xml
-  Size:     17,718 bytes (17.3 KiB)
+  Size:     19,839 bytes (19.4 KiB)
   Created:  2026-10-17T09:00:00  (ODM/@CreationDateTime)
   Modified: 2026-10-17T09:29:34  (file system)
   Model:    ODM v2.0 (odmlib odm_2_0, odmlib 0.3.0)
@@ -312,9 +313,9 @@ CRF
   Forms:             4 (3 scheduled, 1 unscheduled)
   Sections:          5
   Concepts:          1
-  Item definitions:  20
-  Items on forms:    20 rows (20 distinct, 8 mandatory)
-  Items by DataType: text 13, date 4, integer 2, float 1
+  Item definitions:  22
+  Items on forms:    22 rows (22 distinct, 8 mandatory)
+  Items by DataType: text 14, date 5, integer 2, float 1
   Code lists:        7 (17 items)
   ...
   Visits:            3 study events in 1 group
@@ -322,9 +323,9 @@ CRF
   Unscheduled forms: IG.FORM.AE/1
 
 ANNOTATIONS
-  Items annotated:   20 of 20 (100%)
-  By level:          form 3, section 5, concept 0, item 20, codelist item 2
-  Parsed:            29 parsed, 0 partial, 1 unparsed
+  Items annotated:   22 of 22 (100%)
+  By level:          form 3, section 5, concept 0, item 22, codelist item 2
+  Parsed:            31 parsed, 0 partial, 1 unparsed
   NOT SUBMITTED:     3
   Datasets:          AE, CM, DM, SUPPCM, VS
 
@@ -337,8 +338,8 @@ ELEMENT COUNTS
   ...
 
 SUMMARY
-  231 elements across 124 element types (31 present, 93 absent)
-  4 forms, 20 item rows, 20 item definitions, 7 code lists, 1 method, 5 visit-form links
+  250 elements across 124 element types (32 present, 92 absent)
+  4 forms, 22 item rows, 22 item definitions, 7 code lists, 1 method, 5 visit-form links
 ```
 
 A file with ClinicalData gets a `NOTE: ClinicalData (n) not examined` line under the header: crfutils handles
@@ -359,18 +360,18 @@ crfpdf -c tests/data/crf_synthetic.xml --page-size a4 --html acrf.html --validat
 ```
 
 ```
-Wrote acrf.pdf (7 pages: 4 forms, 3 visits) and acrf.pagerefs.json (29 annotations)
+Wrote acrf.pdf (7 pages: 4 forms, 3 visits) and acrf.pagerefs.json (31 annotations)
 ```
 
 ## The page-references JSON and Define-XML
 
-`crfpdf` writes, beside the PDF, a JSON document a Define-XML tool can use to add `def:PDFPageRef` page
-references to the `def:Origin` of each collected variable. Its `schema_version` is `1.0`; it is bumped on any
-change to the shape or to the key grammar.
+`crfpdf` writes, beside the PDF, a JSON document from which a Define-XML tool can write the `def:Origin` of each
+SDTM variable and value-level item: a proposed `Type` and `Source`, and the `def:PDFPageRef` page references. Its
+`schema_version` is `2.0`; it is bumped on any change to the shape or to the key grammar.
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "key_format": "DATASET.VARIABLE[ where VAR = VALUE[ and ...]]",
   "generator": {"name": "crfpdf", "version": "0.1.0", "weasyprint": "68.1"},
   "crf_file": "crf.xml", "pdf_file": "acrf.pdf", "pdf_sha256": "...", "page_count": 7, "page_size": "letter",
@@ -384,14 +385,30 @@ change to the shape or to the key grammar.
                    "item_name": "SYSBPU", "codelist_oid": null, "coded_value": null,
                    "text": "VSORRESU = mmHg when VSTESTCD = SYSBP", "status": "parsed", "not_submitted": false,
                    "domains": [],
-                   "targets": [{"dataset": "VS", "dataset_source": "prefix", "variable": "VSORRESU", "value": "mmHg",
-                                "where": [{"variable": "VSTESTCD", "comparator": "EQ", "values": ["SYSBP"]}],
-                                "qnam": null, "key": "VS.VSORRESU where VSTESTCD = SYSBP"}],
+                   "targets": [{"dataset": "VS", "dataset_source": "prefix", "variable": "VSORRESU",
+                                "variable_source": "annotation", "value": "mmHg",
+                                "where": [{"variable": "VSTESTCD", "comparator": "EQ", "values": ["SYSBP"],
+                                           "source": "annotation"},
+                                          {"variable": "VSLOC", "comparator": "EQ", "values": ["ARM"],
+                                           "source": "concept"}],
+                                "qnam": null, "key": "VS.VSORRESU where VSLOC = ARM and VSTESTCD = SYSBP"}],
+                   "item_origins": [{"type": "Protocol", "source": "Sponsor"}], "prespecified_value": "mmHg",
+                   "mapping_instructions": null,
+                   "proposed_origin": {"type": "Protocol", "source": "Sponsor", "basis": "ItemRef/Origin",
+                                       "description": null},
                    "pages": [5], "occurrences": 1}],
-  "index": {"VS.VSORRESU where VSTESTCD = SYSBP": [5], "VS.VSORRESU": [5]},
+  "index": {"VS.VSORRESU where VSLOC = ARM and VSTESTCD = SYSBP": [5], "VS.VSORRESU where VSTESTCD = SYSBP": [5],
+            "VS.VSORRESU": [5]},
+  "origins": {"VS.VSORRESU": [{"type": "Protocol", "source": "Sponsor", "description": null,
+                               "basis": ["ItemRef/Origin"], "mapping": [], "values": ["mmHg"],
+                               "items": ["IT.VS.SYSBPU"], "pages": [5]}],
+              "CM.CMSTRF": [{"type": "Derived", "source": "Sponsor", "description": "__PLACEHOLDER__",
+                             "basis": ["mappingInstructions"], "mapping": ["relative_timing"], "values": [],
+                             "items": ["IT.CM.CMSTRF"], "pages": [6]}]},
   "domains": {"VS": [5]},
-  "warnings": [{"check": "unparsed_annotation", "text": "see protocol section 5",
-                "form_oid": "IG.FORM.DM", "item_oid": "IT.DM.NOTE"}]
+  "warnings": [{"check": "sdtm_alias_disagrees",
+                "text": "the SDTM annotation names AEENDAT; the mapping instructions name AEENDTC",
+                "form_oid": "IG.FORM.AE/1", "item_oid": "IT.AE.AEENDAT"}]
 }
 ```
 
@@ -402,16 +419,46 @@ change to the shape or to the key grammar.
 - A variable's dataset is the qualifier when there is one (`DM.SEX`), else the `SUPPxx` it is placed in, else
   the longest domain the document names that is a prefix of the variable (`VSORRES` -> `VS`), else the domain of
   the innermost enclosing form or section; `dataset_source` records which rule applied.
-- `index` holds every target key with its sorted pages, plus a variable-level roll-up (`VS.VSORRESU`) that is the
-  union of its value-level keys. `domains` holds each domain's pages: the pages of the forms annotated with it,
-  plus the pages of its targets.
-- **Consumer recipe.** For a variable-level origin look up `<Domain>.<Name>`. For a value-level origin build the
-  key from the ValueListDef/ItemRef/WhereClauseRef chain: `WhereClauseDef/RangeCheck` with `Comparator` `EQ`,
-  `NE` or `IN`, the `CheckValue`s, and the `ItemOID`'s `Name`; conditions are sorted by variable, written
-  `VAR = VALUE`, `VAR NE VALUE` or `VAR IN (A, B)` with the IN values sorted. Then emit
-  `<def:DocumentRef leafID="LF.acrf"><def:PDFPageRef PageRefs="5 12" Type="PhysicalRef"/></def:DocumentRef>`,
-  or `FirstPage`/`LastPage` for one contiguous range. A form-level reference can use the named destination:
-  `Type="NamedDestination" PageRefs="F.IG.FORM.VS"`. Printed page numbers equal physical page numbers.
+- **Mapping instructions.** An item's `Alias[@Context='mappingInstructions']` (the CDASHIG text) is classified as
+  `direct`, `concatenated` (date and time components populate the --DTC variable the text names), `relative_timing`,
+  `split` (numeric values to one variable, text to another), `not_submitted` or `other`. When the instructions
+  name the SDTMIG variable to populate and the SDTM alias names a single different one (an alias of `AESTDAT`
+  whose instructions populate `AESTDTC`), the target becomes the named variable (`variable_source:
+  "mappingInstructions"`) and an `sdtm_alias_disagrees` warning is recorded; so is an alias that names targets
+  when the instructions say the field is not submitted. The PDF still shows the alias as written.
+- **Concept conditions.** Within a Concept ItemGroupDef, another item's fixed value -- a `VAR = VALUE` target
+  with no where clause of its own, such as `LBSPEC = BLOOD` -- is added to the where clause of every value-level
+  target in the same dataset that does not test that variable, with `"source": "concept"`. A variable given two
+  different values in one group adds nothing. The key includes these conditions.
+- **Proposed origins**, per annotation (`proposed_origin`) and per key (`origins`):
+  - `Derived` / `Sponsor`, with the CRF pages and a `__PLACEHOLDER__` description, when the field feeds its
+    targets through a rule: mapping instructions of kind `relative_timing` or `split`, or an annotation that is
+    `[NOT SUBMITTED]` and still names targets (`[NOT SUBMITTED];MHSTRF;MHSTRTPT`);
+  - else the first `ItemRef/Origin` of the item where the form uses it (a prefilled value such as
+    `PreSpecifiedValue="mmHg"` usually has `Protocol` / `Sponsor`); date and time concatenated into --DTC stay
+    `Collected`;
+  - else `Collected` with a `__PLACEHOLDER__` source: the CRF does not say who records the value.
+  `basis` says which rule applied. `values` holds the annotated values, or the ItemRef's `PreSpecifiedValue`.
+- `index` and `origins` have the same keys: every target key, the key without the concept conditions, and a
+  variable-level roll-up (`VS.VSORRESU`) that is the union of its value-level keys. `origins[key]` holds one
+  entry per distinct (`type`, `source`) among the targets filed under the key. `domains` holds each domain's
+  pages: the pages of the forms annotated with it, plus the pages of its targets.
+- **Consumer recipe.**
+  - Variable-level origin: `origins["<Domain>.<Name>"]`.
+  - Value-level origin: build the Define-XML where clause from the ValueListDef/ItemRef/WhereClauseRef chain
+    (`WhereClauseDef/RangeCheck`: the `ItemOID`'s `Name`, `Comparator` `EQ`, `NE` or `IN`, the `CheckValue`s). A
+    CRF target matches when it has the same dataset and variable, **every** condition with `"source":
+    "annotation"` is in the where clause, and no condition with `"source": "concept"` contradicts a condition
+    the where clause has on the same variable (a concept condition on a variable the where clause does not test
+    is ignored). Merge `origins[target.key]` over the matching targets by `type` and `source`. The where clause
+    may test more variables than the annotation does (a Define-XML clause on VSTESTCD, VSPOS, VSLOC and VSLAT
+    matches `VSORRES when VSTESTCD = SYSBP`). For an exact lookup instead, conditions are sorted by variable and
+    written `VAR = VALUE`, `VAR NE VALUE` or `VAR IN (A, B)` with the IN values sorted.
+  - Emit `def:Origin Type Source`, and for `Collected` and `Derived` origins
+    `<def:DocumentRef leafID="LF.acrf"><def:PDFPageRef PageRefs="5 12" Type="PhysicalRef"/></def:DocumentRef>`,
+    or `FirstPage`/`LastPage` for one contiguous range. A `Derived` origin's `__PLACEHOLDER__` description stands
+    for the method, which the CRF does not hold. A form-level reference can use the named destination:
+    `Type="NamedDestination" PageRefs="F.IG.FORM.VS"`. Printed page numbers equal physical page numbers.
 
 ## Development
 

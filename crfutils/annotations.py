@@ -50,6 +50,7 @@ class Condition:
     variable: str
     comparator: str                 # "EQ" | "NE" | "IN"
     values: tuple                   # the compared values; one for EQ and NE
+    source: str = "annotation"      # "annotation" | "concept" (added by mapping.enrich from a sibling item)
 
 
 @dataclass(frozen=True)
@@ -61,6 +62,7 @@ class Target:
     where: tuple                    # Condition
     qnam: Union[str, None]          # for `X in SUPPxx`: X
     key: str                        # target_key(dataset, variable, where)
+    variable_source: str = "annotation"     # "annotation" | "mappingInstructions" (set by mapping.correct)
 
 
 @dataclass
@@ -134,8 +136,13 @@ def _parse_conditions(text: str) -> Union[tuple, None]:
     return tuple(conditions)
 
 
-def _resolve_dataset(variable: str, qualified: Union[str, None], context_domain: Union[str, None],
-                     known_domains: Iterable[str]) -> tuple:
+def annotation_key(target: Target) -> str:
+    """the key of a target from the annotation's own conditions, without those mapping.enrich added"""
+    return target_key(target.dataset, target.variable, [c for c in target.where if c.source == "annotation"])
+
+
+def resolve_dataset(variable: str, qualified: Union[str, None], context_domain: Union[str, None],
+                    known_domains: Iterable[str]) -> tuple:
     """(dataset, source): qualified, then the longest known domain that is a strict prefix of the
     variable, then the context domain; (None, None) when nothing applies"""
     if qualified:
@@ -277,7 +284,7 @@ def _parse_target(segment: str, context_domain: Union[str, None], known: frozens
             targets.append(Target(dataset, source, "QVAL", value, conditions, variable,
                                   target_key(dataset, "QVAL", conditions)))
             continue
-        dataset, source = _resolve_dataset(variable, qualified, context_domain, known)
+        dataset, source = resolve_dataset(variable, qualified, context_domain, known)
         if dataset is None:
             warnings.append(DATASET_UNRESOLVED)
         targets.append(Target(dataset, source, variable, value, where, None,

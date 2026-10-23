@@ -1,14 +1,16 @@
 """The page-references JSON crfpdf writes beside the PDF.
 
-The JSON is a public contract: a Define-XML tool reads it to write def:PDFPageRef page references into the
-def:Origin of each collected variable. Its shape and the key grammar (annotations.target_key) are versioned
-by SCHEMA_VERSION; bump it on any change to either. This module imports nothing from crfpdf.py -- it is
-handed plain values and duck-typed objects -- so it can be read on its own.
+The JSON is a public contract: a Define-XML tool reads it to write the def:Origin of each SDTM variable and
+value-level item -- the proposed Type and Source, and the def:PDFPageRef page references. Its shape and the key
+grammar (annotations.target_key) are versioned by SCHEMA_VERSION; bump it on any change to either. This module
+imports nothing from crfpdf.py -- it is handed plain values and duck-typed objects -- so it can be read on its own.
 """
 from dataclasses import asdict
-from typing import Iterable, Union
+from typing import Iterable
 
-SCHEMA_VERSION = "1.0"
+from .. import annotations as A
+
+SCHEMA_VERSION = "2.0"
 KEY_FORMAT = "DATASET.VARIABLE[ where VAR = VALUE[ and ...]]"
 
 
@@ -17,18 +19,26 @@ def _target_dict(target) -> dict:
         "dataset": target.dataset,
         "dataset_source": target.dataset_source,
         "variable": target.variable,
+        "variable_source": target.variable_source,
         "value": target.value,
-        "where": [{"variable": c.variable, "comparator": c.comparator, "values": list(c.values)} for c in target.where],
+        "where": [{"variable": c.variable, "comparator": c.comparator, "values": list(c.values), "source": c.source}
+                  for c in target.where],
         "qnam": target.qnam,
         "key": target.key,
     }
 
 
-def _roll_up(key: str, target) -> Union[str, None]:
-    """the variable-level key a value-level key rolls up into, or None when it is already variable-level"""
+def _keys(target) -> list:
+    """the index keys a target is filed under: its key, its key without the concept conditions, and the
+    variable-level roll-up of a value-level key"""
+    keys = [target.key, A.annotation_key(target)]
     if target.dataset and target.where:
-        return f"{target.dataset}.{target.variable}"
-    return None
+        keys.append(f"{target.dataset}.{target.variable}")
+    return list(dict.fromkeys(keys))
+
+
+def _instruction_dict(instruction) -> dict:
+    return {"kind": instruction.kind, "variables": list(instruction.variables), "text": instruction.text}
 
 
 def build(crf_file: str, pdf_file: str, pdf_sha256: str, page_count: int, page_size: str, design,
@@ -38,15 +48,20 @@ def build(crf_file: str, pdf_file: str, pdf_sha256: str, page_count: int, page_s
     :param design: the StudyDesign
     :param forms: FormPages per form in document order (oid, name, domains, named_destination, first_page,
         last_page, visits)
-    :param annotations: AnnotationPages per rendered annotation (record, parsed, id, page)
+    :param annotations: AnnotationPages per rendered annotation (record, parsed, id, page, instruction,
+        item_ref, origin)
     :param warnings: Warning records (check, text, form_oid, item_oid)
     :param generator: {"name", "version", "weasyprint"}
     :return: dict, ready for json.dumps
     """
     data = design.data
-    merged = {}
+    merged, index, origins, domains = {}, {}, {}, {}
+    for form in forms:
+        for domain in form.domains:
+            domains.setdefault(domain, set()).update(range(form.first_page, form.last_page + 1))
     for anno in annotations:
-        record, parsed = anno.record, anno.parsed
+        record, parsed, item_ref, origin = anno.record, anno.parsed, anno.item_ref, anno.origin
+        pages = {anno.page} if anno.page is not None else set()
         key = (record.level, record.form_oid, record.item_oid, record.coded_value, record.text)
         entry = merged.get(key)
         if entry is None:
@@ -64,32 +79,42 @@ def build(crf_file: str, pdf_file: str, pdf_sha256: str, page_count: int, page_s
                 "not_submitted": parsed.not_submitted,
                 "domains": list(parsed.domains),
                 "targets": [],
+                "item_origins": [{"type": o.type, "source": o.source} for o in item_ref.origins] if item_ref else [],
+                "prespecified_value": item_ref.prespecified_value if item_ref else None,
+                "mapping_instructions": _instruction_dict(anno.instruction) if anno.instruction else None,
+                "proposed_origin": asdict(origin) if origin else None,
                 "_target_keys": set(),
                 "pages": set(),
                 "occurrences": 0,
             }
+        entry["pages"] |= pages
+        entry["occurrences"] += 1
         for target in parsed.targets:
             if target.key not in entry["_target_keys"]:
                 entry["_target_keys"].add(target.key)
                 entry["targets"].append(_target_dict(target))
-        if anno.page is not None:
-            entry["pages"].add(anno.page)
-        entry["occurrences"] += 1
-    index, domains = {}, {}
-    for form in forms:
-        for domain in form.domains:
-            domains.setdefault(domain, set()).update(range(form.first_page, form.last_page + 1))
+            if target.dataset:
+                domains.setdefault(target.dataset, set()).update(pages)
+            value = target.value if target.value is not None else (item_ref.prespecified_value if item_ref else None)
+            for target_key in _keys(target):
+                index.setdefault(target_key, set()).update(pages)
+                if origin is None:
+                    continue
+                by_kind = origins.setdefault(target_key, {})
+                proposed = by_kind.get((origin.type, origin.source))
+                if proposed is None:
+                    proposed = by_kind[(origin.type, origin.source)] = {
+                        "type": origin.type, "source": origin.source, "description": origin.description,
+                        "basis": [], "mapping": [], "values": [], "items": [], "pages": set()}
+                for field_name, item in (("basis", origin.basis), ("values", value), ("items", record.item_oid),
+                                         ("mapping", anno.instruction.kind if anno.instruction else None)):
+                    if item is not None and item not in proposed[field_name]:
+                        proposed[field_name].append(item)
+                proposed["pages"] |= pages
     entries = []
     for entry in merged.values():
-        pages = sorted(entry.pop("pages"))
         entry.pop("_target_keys")
-        entry["pages"] = pages
-        for target in entry["targets"]:
-            index.setdefault(target["key"], set()).update(pages)
-            if target["dataset"] and target["where"]:
-                index.setdefault(f"{target['dataset']}.{target['variable']}", set()).update(pages)
-            if target["dataset"]:
-                domains.setdefault(target["dataset"], set()).update(pages)
+        entry["pages"] = sorted(entry["pages"])
         entries.append(entry)
     leaf = data.acrf_leaf
     return {
@@ -111,6 +136,8 @@ def build(crf_file: str, pdf_file: str, pdf_sha256: str, page_count: int, page_s
                     "forms": [ref.oid for ref in design.schedule.get(visit, [])]} for visit in design.visits],
         "annotations": entries,
         "index": {key: sorted(pages) for key, pages in sorted(index.items())},
+        "origins": {key: [dict(proposed, pages=sorted(proposed["pages"])) for proposed in by_kind.values()]
+                    for key, by_kind in sorted(origins.items())},
         "domains": {domain: sorted(pages) for domain, pages in sorted(domains.items())},
         "warnings": [asdict(w) for w in warnings],
     }

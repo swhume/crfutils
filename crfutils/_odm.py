@@ -157,7 +157,10 @@ def design_from_lxml(tree: etree._ElementTree) -> D.DesignData:
             D.ChildRef(etree.QName(child).localname,
                        child.get("ItemOID") if etree.QName(child).localname == "ItemRef"
                        else child.get("ItemGroupOID"),
-                       _order(child.get("OrderNumber")), child.get("Mandatory"))
+                       _order(child.get("OrderNumber")), child.get("Mandatory"),
+                       origins=tuple(D.Origin(origin.get("Type"), origin.get("Source"))
+                                     for origin in child.findall(tag("Origin"))),
+                       prespecified_value=child.get("PreSpecifiedValue"))
             for child in group if isinstance(child.tag, str)
             and etree.QName(child).localname in ("ItemRef", "ItemGroupRef"))
         data.groups[group.get("OID")] = D.GroupDef(

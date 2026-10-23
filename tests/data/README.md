@@ -14,8 +14,10 @@ is written for these tests.
 | `Demographics_RACE_check_all_that_apply.xml` | DataExchange-ODM `examples/Demographics_RACE/` | MIT (c) 2022 cdisc | three ItemRefs followed by an ItemGroupRef, with no OrderNumbers (odmlib fix O5 keeps that order); ClinicalData |
 | `crf_synthetic.xml` | written for crfutils | MIT (crfutils) | see the comment at the top of the file: protocol order opposite to document order, a Common event, an unscheduled form with a slash in its OID, vocabulary B, every annotation form, xhtml TranslatedText, UnitsItemOID, a MethodDef, ConditionDef and AnnotatedCRF Leaf |
 
-`crf-2.0.xml` from data-definition-engine (a 14-form, 394-item CRF) is used only locally for timing the PDF
-rendering; its repository's license has a placeholder copyright, so it is not copied here.
+`crf-2.0.xml` from data-definition-engine (a 14-form, 394-item CRF) is used only locally, for timing the PDF
+rendering and checking the page-references JSON; its repository's license has a placeholder copyright, so it is
+not copied here. `crf_synthetic.xml` reproduces the parts of it the JSON reads (ItemRef Origins and
+PreSpecifiedValue, mappingInstructions, a prefilled concept sibling).
 
 The `golden/` folder holds the crfrefs JSON reports the tests compare against. Regenerate them after a deliberate
 change to the report with `CRFUTILS_UPDATE_GOLDEN=1 pytest tests/test_crfrefs.py`.

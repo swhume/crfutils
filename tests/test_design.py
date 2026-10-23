@@ -4,7 +4,7 @@ from lxml import etree
 
 from conftest import FIXTURES, SYNTHETIC, fixture_path
 from crfutils import _odm
-from crfutils._design import MAX_DEPTH, ChildRef, StudyDesign, sort_key
+from crfutils._design import MAX_DEPTH, ChildRef, Origin, StudyDesign, sort_key
 
 NS = {"odm": _odm.ODM_NS}
 
@@ -112,7 +112,7 @@ def test_walk_keeps_document_order_without_order_numbers(synthetic):
 
     assert rows == [("group", "IG.SEC.VS", 1), ("item", "IT.VS.VSPERF", 1), ("group", "IG.CON.SYSBP", 2),
                     ("item", "IT.VS.SYSBP", 2), ("item", "IT.VS.SYSBPU", 2), ("item", "IT.VS.VSPOS", 2),
-                    ("item", "IT.VS.VSDTC", 1)]
+                    ("item", "IT.VS.VSLOC", 2), ("item", "IT.VS.VSDTC", 1)]
     assert [row.path for row in synthetic.walk("IG.FORM.VS")][3] == ("IG.FORM.VS", "IG.SEC.VS", "IG.CON.SYSBP")
 
 
@@ -122,9 +122,20 @@ def test_walk_sorts_by_order_number(synthetic):
     assert [row.oid for row in synthetic.groups_on("IG.FORM.CM")] == ["IG.SEC.CM.TAKEN", "IG.SEC.CM"]
 
 
+def test_item_refs_carry_their_origins_and_prespecified_value(synthetic):
+    units = synthetic.item_ref("IG.CON.SYSBP", "IT.VS.SYSBPU")
+    assert units.origins == (Origin("Protocol", "Sponsor"),) and units.prespecified_value == "mmHg"
+    assert synthetic.item_ref("IG.SEC.AE", "IT.AE.AETERM").origins == (Origin("Collected", "Investigator"),)
+    assert synthetic.item_ref("IG.SEC.AE", "IT.AE.AESER").origins == ()
+    assert synthetic.item_ref("IG.SEC.AE", "IT.AE.AESER").prespecified_value is None
+    assert synthetic.item_ref("IG.SEC.AE", "IT.NOPE") is None and synthetic.item_ref("IG.NOPE", "IT.AE.AESER") is None
+    # an ItemGroupRef is not an ItemRef
+    assert synthetic.item_ref("IG.SEC.VS", "IG.CON.SYSBP") is None
+
+
 def test_walk_counts(synthetic):
     assert {form: len(synthetic.items_on(form)) for form in synthetic.forms} == \
-           {"IG.FORM.DM": 5, "IG.FORM.VS": 5, "IG.FORM.CM": 6, "IG.FORM.AE/1": 4}
+           {"IG.FORM.DM": 5, "IG.FORM.VS": 6, "IG.FORM.CM": 6, "IG.FORM.AE/1": 5}
 
 
 def test_mixed_children_in_columbia_follow_document_order():
@@ -148,7 +159,7 @@ def test_cycle_is_recorded_and_not_entered(edited_crf):
     rows = design.walk("IG.FORM.VS")
 
     assert design.cycles == [("IG.FORM.VS", "IG.SEC.VS", "IG.CON.SYSBP", "IG.SEC.VS")]
-    assert len([row for row in rows if row.kind == "item"]) == 5
+    assert len([row for row in rows if row.kind == "item"]) == 6
     # the repeated group gets its heading row (the stylesheet renders a marker there) but is not entered
     assert [(row.kind, row.oid) for row in rows].count(("group", "IG.SEC.VS")) == 2
 
@@ -207,7 +218,7 @@ def test_group_and_context_domains(synthetic):
 def test_annotation_records(synthetic):
     records = synthetic.annotations()
 
-    assert len(records) == 30
+    assert len(records) == 32
     levels = {record.level for record in records}
     assert levels == {"form", "section", "item", "codelist-item"}
     sex = [r for r in records if r.level == "codelist-item"]

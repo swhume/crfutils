@@ -178,8 +178,8 @@ def test_json_structure(rendered):
     refs = rendered[1].refs
     assert set(refs) == {"schema_version", "key_format", "generator", "generated", "crf_file", "pdf_file", "pdf_sha256",
                          "page_count", "page_size", "study", "leaf", "forms", "visits", "annotations", "index",
-                         "domains", "warnings"}
-    assert refs["schema_version"] == SCHEMA_VERSION == "1.0"
+                         "origins", "domains", "warnings"}
+    assert refs["schema_version"] == SCHEMA_VERSION == "2.0"
     assert refs["key_format"] == KEY_FORMAT
     assert refs["generator"]["name"] == "crfpdf" and refs["generator"]["version"] == __version__
     assert refs["generator"]["weasyprint"] == rendered[1].weasyprint_version
@@ -207,15 +207,34 @@ def test_json_annotations_and_index(rendered):
     assert sysbpu["level"] == "item" and sysbpu["item_oid"] == "IT.VS.SYSBPU" and sysbpu["item_name"] == "SYSBPU"
     assert sysbpu["group_path"] == ["IG.FORM.VS", "IG.SEC.VS", "IG.CON.SYSBP"]
     assert sysbpu["status"] == "parsed" and sysbpu["not_submitted"] is False and sysbpu["occurrences"] == 1
+    # the concept group's prefilled VSLOC = ARM is added to the annotation's own condition
     target = sysbpu["targets"][0]
-    assert target == {"dataset": "VS", "dataset_source": "prefix", "variable": "VSORRESU", "value": "mmHg",
-                      "where": [{"variable": "VSTESTCD", "comparator": "EQ", "values": ["SYSBP"]}], "qnam": None,
-                      "key": "VS.VSORRESU where VSTESTCD = SYSBP"}
+    assert target == {"dataset": "VS", "dataset_source": "prefix", "variable": "VSORRESU",
+                      "variable_source": "annotation", "value": "mmHg",
+                      "where": [{"variable": "VSTESTCD", "comparator": "EQ", "values": ["SYSBP"], "source": "annotation"},
+                                {"variable": "VSLOC", "comparator": "EQ", "values": ["ARM"], "source": "concept"}],
+                      "qnam": None, "key": "VS.VSORRESU where VSLOC = ARM and VSTESTCD = SYSBP"}
+    # the evidence for the origin: the ItemRef, the item's mapping instructions, and what was proposed from them
+    assert sysbpu["item_origins"] == [{"type": "Protocol", "source": "Sponsor"}]
+    assert sysbpu["prespecified_value"] == "mmHg" and sysbpu["mapping_instructions"] is None
+    assert sysbpu["proposed_origin"] == {"type": "Protocol", "source": "Sponsor", "basis": "ItemRef/Origin",
+                                         "description": None}
     vs_pages = [f for f in refs["forms"] if f["oid"] == "IG.FORM.VS"][0]
     assert all(vs_pages["first_page"] <= p <= vs_pages["last_page"] for p in sysbpu["pages"])
-    # the index holds every key, plus the variable-level roll-up of each value-level key
-    assert refs["index"]["VS.VSORRESU where VSTESTCD = SYSBP"] == sysbpu["pages"]
-    assert refs["index"]["VS.VSORRESU"] == sysbpu["pages"]
+    # the index holds every key, the key without the concept conditions, and the variable-level roll-up
+    for key in ("VS.VSORRESU where VSLOC = ARM and VSTESTCD = SYSBP", "VS.VSORRESU where VSTESTCD = SYSBP", "VS.VSORRESU"):
+        assert refs["index"][key] == sysbpu["pages"], key
+    # an SDTM alias that disagrees with the mapping instructions is corrected to the variable they name
+    aeendat = by_text["AEENDAT"]
+    assert [(t["key"], t["variable_source"]) for t in aeendat["targets"]] == [("AE.AEENDTC", "mappingInstructions")]
+    assert aeendat["mapping_instructions"]["kind"] == "concatenated"
+    assert aeendat["mapping_instructions"]["variables"] == ["AEENDTC"]
+    assert "AE.AEENDAT" not in refs["index"]
+    assert by_text["AETERM"]["item_origins"] == [{"type": "Collected", "source": "Investigator"}]
+    assert by_text["AESER"]["item_origins"] == [] and by_text["AESER"]["prespecified_value"] is None
+    form = [a for a in refs["annotations"] if a["level"] == "form"][0]
+    assert (form["item_origins"], form["prespecified_value"], form["mapping_instructions"], form["proposed_origin"]) == \
+           ([], None, None, None)
     assert refs["index"]["SUPPCM.QVAL where QNAM = CMINDC"] == by_text["CMINDC in SUPPCM"]["pages"]
     assert refs["index"]["DM.SEX"] == by_text["SEX"]["pages"]
     sex_m = by_text["DM.SEX=M"]
@@ -232,8 +251,45 @@ def test_json_domains_and_warnings(rendered):
     forms = {f["oid"]: f for f in refs["forms"]}
     assert refs["domains"]["VS"] == list(range(forms["IG.FORM.VS"]["first_page"], forms["IG.FORM.VS"]["last_page"] + 1))
     assert "SUPPCM" in refs["domains"]
-    assert refs["warnings"] == [{"check": "unparsed_annotation", "text": "see protocol section 5",
-                                 "form_oid": "IG.FORM.DM", "item_oid": "IT.DM.NOTE"}]
+    assert refs["warnings"] == [
+        {"check": "unparsed_annotation", "text": "see protocol section 5", "form_oid": "IG.FORM.DM",
+         "item_oid": "IT.DM.NOTE"},
+        {"check": "sdtm_alias_disagrees", "text": "the SDTM annotation names AEENDAT; the mapping instructions name AEENDTC",
+         "form_oid": "IG.FORM.AE/1", "item_oid": "IT.AE.AEENDAT"}]
+
+
+def test_json_origins(rendered):
+    refs = rendered[1].refs
+    origins = refs["origins"]
+    pages = {a["item_oid"]: a["pages"] for a in refs["annotations"] if a["level"] == "item"}
+
+    def only(key: str) -> dict:
+        assert len(origins[key]) == 1, origins[key]
+        return origins[key][0]
+
+    assert set(origins) == set(refs["index"])
+    # the ItemRef's Origin, with the prefilled value
+    assert only("VS.VSORRESU where VSLOC = ARM and VSTESTCD = SYSBP") == {
+        "type": "Protocol", "source": "Sponsor", "description": None, "basis": ["ItemRef/Origin"], "mapping": [],
+        "values": ["mmHg"], "items": ["IT.VS.SYSBPU"], "pages": pages["IT.VS.SYSBPU"]}
+    assert only("VS.VSLOC")["values"] == ["ARM"]
+    aeterm = only("AE.AETERM")
+    assert (aeterm["type"], aeterm["source"], aeterm["mapping"]) == ("Collected", "Investigator", ["direct"])
+    # date and time concatenated into --DTC stay collected; with no ItemRef Origin the source is a placeholder
+    aeendtc = only("AE.AEENDTC")
+    assert (aeendtc["type"], aeendtc["source"], aeendtc["basis"], aeendtc["mapping"], aeendtc["pages"]) == \
+           ("Collected", "__PLACEHOLDER__", ["annotation"], ["concatenated"], pages["IT.AE.AEENDAT"])
+    # a field that feeds its targets indirectly proposes Derived, with the pages it is collected on
+    for key, item, basis, mapping in (("CM.CMSTRF", "IT.CM.CMSTRF", "mappingInstructions", ["relative_timing"]),
+                                      ("CM.CMSTRTPT", "IT.CM.CMSTRF", "mappingInstructions", ["relative_timing"]),
+                                      ("CM.CMDOSTXT", "IT.CM.CMDOSE", "mappingInstructions", ["split"]),
+                                      ("VS.VSSTAT where VSTESTCD = VSALL", "IT.VS.VSPERF", "not_submitted", [])):
+        derived = only(key)
+        assert (derived["type"], derived["source"], derived["description"], derived["basis"], derived["mapping"]) == \
+               ("Derived", "Sponsor", "__PLACEHOLDER__", [basis], mapping), key
+        assert derived["items"] == [item] and derived["pages"] == pages[item]
+    # the codelist items' values are the variable's values
+    assert only("DM.SEX")["values"] == ["M", "F"] and only("DM.SEX")["items"] == ["IT.DM.SEX"]
 
 
 def test_result_file_renders_with_visits():
@@ -336,7 +392,9 @@ def test_cli(tmp_path, run_cli):
     assert out.startswith(f"Wrote {tmp_path / 'acrf.pdf'} (") and "4 forms, 3 visits" in out
     assert f"{tmp_path / 'acrf.pagerefs.json'} (" in out and "annotations)" in out
     assert f"Wrote {tmp_path / 'a.html'}" in out
-    assert completed.stderr.decode().startswith("1 warning:\n  unparsed_annotation  IT.DM.NOTE: see protocol section 5")
+    assert completed.stderr.decode() == (
+        "2 warnings:\n  unparsed_annotation  IT.DM.NOTE: see protocol section 5\n"
+        "  sdtm_alias_disagrees  IT.AE.AEENDAT: the SDTM annotation names AEENDAT; the mapping instructions name AEENDTC\n")
     import pypdf
     reader = pypdf.PdfReader(str(tmp_path / "acrf.pdf"))
     assert reader.metadata.title == "My CRF"

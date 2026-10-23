@@ -57,6 +57,8 @@ crfutils/
                   clinical_data_note, design_from_model
   _design.py      DesignData (plain data) and StudyDesign (forms, visits, schedule, walk, annotations); no lxml/odmlib
   annotations.py  the SDTM annotation grammar (parse, target_key); pure Python, never raises
+  mapping.py      mappingInstructions, concept-group conditions and the proposed Origin (classify, correct, enrich,
+                  propose); pure Python, never raises
   validate/ crfhtml/ crfpp/ crfrefs/ metrics/ crfreview/ crfpdf/   one package per command
 ```
 
@@ -105,6 +107,8 @@ them equal: a field added to one must be added to the other.
   the same fields, that the HTML carries in `data-*`; `tests/test_annotations_agree.py` compares them in both modes.
 - `known_domains` = domains named by group annotations, qualified datasets and `SUPPxx` (minus the SUPP prefix);
   it drives the bare-domain-vs-variable decision and the prefix rule.
+- An ItemRef's `ChildRef` carries `origins` (`Origin(type, source)`, 0..n per the XSD) and `prespecified_value`;
+  other ref kinds keep the defaults. `item_ref(group, item)` finds the ItemRef a rendered item comes from.
 
 ### The annotation grammar (`annotations.py`)
 `parse(text, level, source, context_domain, known_domains)` never raises. `attr:Domain` text is a domain only when
@@ -112,6 +116,23 @@ it matches `[A-Z][A-Z0-9]{1,7}` (Result_ODMv2 has `Domain="all"`, which is repor
 order: qualified, supp, prefix (longest known domain that is a strict prefix), context; else `dataset_unresolved`.
 `target_key()` is a **public contract** with the page-refs JSON (`DATASET.VARIABLE[ where VAR = VALUE[ and ...]]`,
 conditions sorted by variable, IN values sorted); change it only with a `pagerefs.SCHEMA_VERSION` bump.
+`Condition.source` and `Target.variable_source` default to `"annotation"`; only `mapping.py` sets `"concept"` /
+`"mappingInstructions"`. `annotation_key()` is the key without the concept conditions.
+
+### mapping.py (decisions taken with the user on 2026-10-23)
+- `classify` matches CDASHIG phrases in `_KINDS` order (relative_timing, split, concatenated, not_submitted,
+  direct, else other); "does not map directly" is not "does not map to an SDTMIG variable". `variables` are only
+  the "SDTMIG variable XXX" the text names to populate.
+- `correct`: a single target that the named variable disagrees with is replaced (dataset re-resolved) and the
+  caller records `sdtm_alias_disagrees`; several targets, SUPP targets, or not_submitted instructions only warn.
+  The JSON changes; the PDF still shows the alias text.
+- `enrich` runs only in Concept groups: another item's `VAR = VALUE` with no where clause, not NOT SUBMITTED, not a
+  codelist item, same dataset, becomes `VAR EQ VALUE` (source concept) on targets that already have a where
+  clause; two values for one variable add nothing. Consumers match annotation conditions as a subset of the
+  Define-XML where clause and ignore concept conditions on variables it does not test (README recipe).
+- `propose` order: relative_timing/split instructions -> Derived; NOT SUBMITTED with targets -> Derived; first
+  ItemRef Origin with a Type; else Collected with source `__PLACEHOLDER__`. Derived always has a placeholder
+  description and keeps its pages.
 
 ### crfhtml
 - `STYLESHEET` compiles once; serialize the result only with `str()`/`bytes()`, **never `etree.tostring()`**
@@ -162,8 +183,9 @@ output and problems with no page go to `tell_user()` (stderr, or a MessageBoxW w
 - WeasyPrint and pypdf are imported only in `_import_engines()` inside `render()`; ImportError **or OSError** (a
   missing Pango) becomes `CrfPdfError` with `INSTALL_HELP` (exit 2). The other commands never import them
   (`tests/test_crfpdf_unavailable.py`).
-- Pipeline: `CrfHtml(mode="print", title_page=True)` -> parse every `span.anno` (`data-domain-index` 1-4 by first
-  appearance of the domain on the form, 0 unresolved) -> inject `@page size`, `@font-face` (bundled Liberation Sans
+- Pipeline: `CrfHtml(mode="print", title_page=True)` -> parse every `span.anno`, `mapping.correct` it (item
+  level), `mapping.enrich` per form, `mapping.propose` (`data-domain-index` 1-4 by first appearance of the domain
+  on the form, 0 unresolved) -> inject `@page size`, `@font-face` (bundled Liberation Sans
   as "CRFUtils Sans", `file:` URIs) and `acrf.css` -> `weasyprint.HTML(string=...).render()` -> `page_of` from
   `page.anchors` (first page an id appears on) -> form ranges (first page to the next form's first page - 1; the
   last form runs to the end) -> **delete every non-`F.*` anchor** before `write_pdf()` so only forms are named
@@ -174,13 +196,18 @@ output and problems with no page go to `tell_user()` (stderr, or a MessageBoxW w
   headings so CSS bookmarks don't duplicate the pypdf ones.
 - Defaults: `<stem>_acrf.pdf` beside the input, `<pdf stem>.pagerefs.json` beside the PDF, `--html` only on request.
   `write()` checks every destination before rendering.
-- `pagerefs.py` builds the JSON; its shape and `SCHEMA_VERSION` are a public contract (README has the consumer
-  recipe). Annotations merge by (level, form, item, coded value, text).
-- Measured: the 14-form/394-item `data-definition-engine/output/crf-2.0.xml` renders 103 pages in ~7 s and 350 MB.
+- `pagerefs.py` builds the JSON; its shape and `SCHEMA_VERSION` (2.0) are a public contract (README has the shape,
+  the origin rules and the consumer recipe). Annotations merge by (level, form, item, coded value, text); `index`
+  and `origins` are built per occurrence and share keys (target key, annotation key, variable roll-up).
+- Measured: the 14-form/394-item `data-definition-engine/output/crf-2.0.xml` of 2026-10-23 renders 45 pages in ~3 s
+  and 200 MB (an earlier version of it rendered 103 pages in ~7 s and 350 MB).
 
 ### Tests
 - Fixtures in `tests/data/` (provenance in `tests/data/README.md`); `crf_synthetic.xml` is authored and must stay
   XSD-valid and strictly loadable. Build broken files with the `edited_crf` fixture, never commit them.
+  It also stands in for the data-definition-engine CRF (which may not be copied here): ItemRef Origins and
+  PreSpecifiedValue in IG.CON.SYSBP, mappingInstructions of each kind, AEENDAT -> AEENDTC. Changing it moves
+  pinned counts in test_metrics, test_crfrefs (and its golden), test_design, test_crfhtml and the README examples.
 - `tests/data/golden/` holds crfrefs JSON goldens (odmlib version masked); regenerate deliberately.
 - The Columbia example has 12 genuine reference errors (dangling ConditionOIDs, a duplicate Transition OID) that
   `test_crfrefs.py` pins; they are in the CDISC file, not in crfutils.

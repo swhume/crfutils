@@ -111,8 +111,8 @@ def test_synthetic_crf_metrics(synthetic):
     crf = synthetic.crf
     assert (crf.forms, crf.scheduled_forms, crf.unscheduled_forms) == (4, 3, 1)
     assert (crf.sections, crf.concepts, crf.other_groups) == (5, 1, 0)
-    assert (crf.item_defs, crf.item_rows, crf.distinct_items, crf.mandatory_rows) == (20, 20, 20, 8)
-    assert crf.items_by_datatype == {"text": 13, "date": 4, "integer": 2, "float": 1}
+    assert (crf.item_defs, crf.item_rows, crf.distinct_items, crf.mandatory_rows) == (22, 22, 22, 8)
+    assert crf.items_by_datatype == {"text": 14, "date": 5, "integer": 2, "float": 1}
     assert (crf.codelists, crf.codelist_items) == (7, 17)
     assert (crf.condition_defs, crf.method_defs, crf.workflow_defs) == (1, 1, 0)
 
@@ -126,10 +126,10 @@ def test_synthetic_visit_metrics(synthetic):
 
 def test_synthetic_annotation_metrics(synthetic):
     a = synthetic.annotations
-    assert (a.annotated_items, a.distinct_items, a.annotated_pct) == (20, 20, 100.0)
+    assert (a.annotated_items, a.distinct_items, a.annotated_pct) == (22, 22, 100.0)
     assert (a.form_annotations, a.section_annotations, a.concept_annotations, a.item_annotations,
-            a.codelist_item_annotations) == (3, 5, 0, 20, 2)
-    assert (a.parsed, a.partial, a.unparsed, a.not_submitted) == (29, 0, 1, 3)
+            a.codelist_item_annotations) == (3, 5, 0, 22, 2)
+    assert (a.parsed, a.partial, a.unparsed, a.not_submitted) == (31, 0, 1, 3)
     assert a.datasets == ["AE", "CM", "DM", "SUPPCM", "VS"]
     assert a.unresolved_datasets == 0
     assert a.unparsed_texts == ["see protocol section 5"]
@@ -141,7 +141,7 @@ def test_synthetic_form_table(synthetic):
     assert list(rows) == ["IG.FORM.DM", "IG.FORM.VS", "IG.FORM.CM", "IG.FORM.AE/1"]
     vs = rows["IG.FORM.VS"]
     assert (vs.name, vs.domains, vs.sections, vs.concepts, vs.items, vs.annotated, vs.not_submitted, vs.visits) == \
-           ("Vital Signs", ["VS"], 1, 1, 5, 5, 1, 2)
+           ("Vital Signs", ["VS"], 1, 1, 6, 6, 1, 2)
     assert rows["IG.FORM.AE/1"].visits == 0 and rows["IG.FORM.CM"].not_submitted == 2
 
 
@@ -187,9 +187,9 @@ def test_text_report(synthetic):
                     "  Administrative data", "SUMMARY"):
         assert heading in text
     assert "  Forms:             4 (3 scheduled, 1 unscheduled)" in text
-    assert "  Items annotated:   20 of 20 (100%)" in text
+    assert "  Items annotated:   22 of 22 (100%)" in text
     assert "  Visit-form links:  5 (matrix 3 x 4, 42% filled)" in text
-    assert "4 forms, 20 item rows, 20 item definitions, 7 code lists, 1 method, 5 visit-form links" in text
+    assert "4 forms, 22 item rows, 22 item definitions, 7 code lists, 1 method, 5 visit-form links" in text
     assert "FORMS" not in CrfMetrics(SYNTHETIC).collect_to_string(show_forms=False)
 
 
@@ -246,7 +246,7 @@ def test_non_conformant_file_suggests_permissive(edited_crf):
         CrfMetrics(crf).collect()
     assert "add --permissive" in str(excinfo.value)
     result = CrfMetrics(crf, permissive=True).collect()
-    assert result.permissive and result.crf.item_defs == 20
+    assert result.permissive and result.crf.item_defs == 22
     assert result.crf.items_by_datatype["(none)"] == 1
     assert "NOTE: loaded in permissive mode" in CrfMetrics(crf, permissive=True).collect_to_string()
 
