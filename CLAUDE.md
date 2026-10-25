@@ -106,7 +106,9 @@ them equal: a field added to one must be added to the other.
   `formSectionAnnotation`|`SDTM` else `@Domain`; Concept `SDTM` only. `annotations()` yields the same records, with
   the same fields, that the HTML carries in `data-*`; `tests/test_annotations_agree.py` compares them in both modes.
 - `known_domains` = domains named by group annotations, qualified datasets and `SUPPxx` (minus the SUPP prefix);
-  it drives the bare-domain-vs-variable decision and the prefix rule.
+  it drives the bare-domain-vs-variable decision and the prefix rule. A Concept's annotation is parsed at level
+  `"concept"` against `outer_domains` (forms, sections, item datasets), so its fixed values (`VSTESTCD = SYSBP`)
+  are targets and never become domains; `parse_level(record.level)` maps a record level to the parse level.
 - An ItemRef's `ChildRef` carries `origins` (`Origin(type, source)`, 0..n per the XSD) and `prespecified_value`;
   other ref kinds keep the defaults. `item_ref(group, item)` finds the ItemRef a rendered item comes from.
 
@@ -117,7 +119,9 @@ order: qualified, supp, prefix (longest known domain that is a strict prefix), c
 `target_key()` is a **public contract** with the page-refs JSON (`DATASET.VARIABLE[ where VAR = VALUE[ and ...]]`,
 conditions sorted by variable, IN values sorted); change it only with a `pagerefs.SCHEMA_VERSION` bump.
 `Condition.source` and `Target.variable_source` default to `"annotation"`; only `mapping.py` sets `"concept"` /
-`"mappingInstructions"`. `annotation_key()` is the key without the concept conditions.
+`"mappingInstructions"`. `annotation_key()` is the key without the concept conditions. `Target.define_item_oid`
+defaults to None; only `mapping.pair_define_oids` sets it. Level `"concept"` reads `NAME = VALUE` as a target when
+NAME has a strict known-domain prefix (else as a domain label, as at `"group"` level).
 
 ### mapping.py (decisions taken with the user on 2026-10-23)
 - `classify` matches CDASHIG phrases in `_KINDS` order (relative_timing, split, concatenated, not_submitted,
@@ -130,9 +134,16 @@ conditions sorted by variable, IN values sorted); change it only with a `pageref
   codelist item, same dataset, becomes `VAR EQ VALUE` (source concept) on targets that already have a where
   clause; two values for one variable add nothing. Consumers match annotation conditions as a subset of the
   Define-XML where clause and ignore concept conditions on variables it does not test (README recipe).
-- `propose` order: relative_timing/split instructions -> Derived; NOT SUBMITTED with targets -> Derived; first
-  ItemRef Origin with a Type; else Collected with source `__PLACEHOLDER__`. Derived always has a placeholder
-  description and keeps its pages.
+- `propose` order: a Concept annotation whose targets all assign a value with no where clause -> Protocol/Sponsor
+  (basis `concept`; pass `level=record.level`); relative_timing/split instructions -> Derived; NOT SUBMITTED with
+  targets -> Derived; first ItemRef Origin with a Type; else Collected with source `__PLACEHOLDER__`. Derived always
+  has a placeholder description and keeps its pages.
+- Declared facts (data-definition-engine, 2026-10-24): `instruction(aliases)` is `classify()` with the kind
+  replaced by `Alias SDTMMappingType` when it is one of `DECLARED_KINDS` (`kind_source` "crf"). `define_oids` reads
+  `Alias SDTMItemOIDs` (space-separated `DATASET.VARIABLE=OID`); `pair_define_oids` sets `define_item_oid` by
+  `DATASET.VARIABLE` (SUPP targets as `SUPPxx.QVAL`) and returns what did not pair (crfpdf warns
+  `define_oid_unpaired`); nothing is reported when the alias is absent. crfpdf pairs after `correct` and before
+  `enrich` (which keeps the OID), so unpaired messages carry the annotation's own key.
 
 ### crfhtml
 - `STYLESHEET` compiles once; serialize the result only with `str()`/`bytes()`, **never `etree.tostring()`**
@@ -196,9 +207,13 @@ output and problems with no page go to `tell_user()` (stderr, or a MessageBoxW w
   headings so CSS bookmarks don't duplicate the pypdf ones.
 - Defaults: `<stem>_acrf.pdf` beside the input, `<pdf stem>.pagerefs.json` beside the PDF, `--html` only on request.
   `write()` checks every destination before rendering.
-- `pagerefs.py` builds the JSON; its shape and `SCHEMA_VERSION` (2.0) are a public contract (README has the shape,
-  the origin rules and the consumer recipe). Annotations merge by (level, form, item, coded value, text); `index`
-  and `origins` are built per occurrence and share keys (target key, annotation key, variable roll-up).
+- `pagerefs.py` builds the JSON; its shape and `SCHEMA_VERSION` (2.1) are a public contract (README has the shape,
+  the origin rules and the consumer recipe, whose value-level match uses "admits": EQ equal, IN listed, NE
+  different). Annotations merge by (level, form, item, coded value, text); `index` and `origins` are built per
+  occurrence and share keys (target key, annotation key, variable roll-up); `define_items` holds the same origin
+  entries keyed by `define_item_oid`. `crf_sha256`/`file_oid`/`creation_datetime` identify the CRF (a DDE CRF's
+  FileOID and CreationDateTime come from its DDS, so only the hash detects a regenerated CRF); a PDF whose name
+  differs from the AnnotatedCRF leaf href is a `leaf_href_mismatch` warning.
 - Measured: the 14-form/394-item `data-definition-engine/output/crf-2.0.xml` of 2026-10-23 renders 45 pages in ~3 s
   and 200 MB (an earlier version of it rendered 103 pages in ~7 s and 350 MB).
 
@@ -206,8 +221,10 @@ output and problems with no page go to `tell_user()` (stderr, or a MessageBoxW w
 - Fixtures in `tests/data/` (provenance in `tests/data/README.md`); `crf_synthetic.xml` is authored and must stay
   XSD-valid and strictly loadable. Build broken files with the `edited_crf` fixture, never commit them.
   It also stands in for the data-definition-engine CRF (which may not be copied here): ItemRef Origins and
-  PreSpecifiedValue in IG.CON.SYSBP, mappingInstructions of each kind, AEENDAT -> AEENDTC. Changing it moves
-  pinned counts in test_metrics, test_crfrefs (and its golden), test_design, test_crfhtml and the README examples.
+  PreSpecifiedValue in IG.CON.SYSBP, mappingInstructions of each kind, AEENDAT -> AEENDTC, and the declared facts
+  (SDTMItemOIDs/SDTMMappingType on SYSBP, SYSBPU, AEENDAT, CMDOSE; IG.CON.SYSBP's fixed values). Changing it moves
+  pinned counts in test_metrics, test_crfrefs (and its golden), test_design, test_crfhtml, test_crfpdf and the
+  README examples. Its leaf href is acrf.pdf, so a render to the default PDF name has a leaf_href_mismatch warning.
 - `tests/data/golden/` holds crfrefs JSON goldens (odmlib version masked); regenerate deliberately.
 - The Columbia example has 12 genuine reference errors (dangling ConditionOIDs, a duplicate Transition OID) that
   `test_crfrefs.py` pins; they are in the CDISC file, not in crfutils.

@@ -10,7 +10,7 @@ from typing import Iterable
 
 from .. import annotations as A
 
-SCHEMA_VERSION = "2.0"
+SCHEMA_VERSION = "2.1"
 KEY_FORMAT = "DATASET.VARIABLE[ where VAR = VALUE[ and ...]]"
 
 
@@ -25,6 +25,7 @@ def _target_dict(target) -> dict:
                   for c in target.where],
         "qnam": target.qnam,
         "key": target.key,
+        "define_item_oid": target.define_item_oid,
     }
 
 
@@ -38,13 +39,36 @@ def _keys(target) -> list:
 
 
 def _instruction_dict(instruction) -> dict:
-    return {"kind": instruction.kind, "variables": list(instruction.variables), "text": instruction.text}
+    return {"kind": instruction.kind, "kind_source": instruction.kind_source, "variables": list(instruction.variables),
+            "text": instruction.text}
+
+
+def _add_origin(by_kind: dict, origin, anno, record, value, pages: set) -> None:
+    """merges one occurrence's proposed origin into the entries filed under one key, grouped by type and source"""
+    proposed = by_kind.get((origin.type, origin.source))
+    if proposed is None:
+        proposed = by_kind[(origin.type, origin.source)] = {
+            "type": origin.type, "source": origin.source, "description": origin.description,
+            "basis": [], "mapping": [], "values": [], "items": [], "pages": set()}
+    for field_name, item in (("basis", origin.basis), ("values", value), ("items", record.item_oid),
+                             ("mapping", anno.instruction.kind if anno.instruction else None)):
+        if item is not None and item not in proposed[field_name]:
+            proposed[field_name].append(item)
+    proposed["pages"] |= pages
+
+
+def _finished(by_key: dict) -> dict:
+    return {key: [dict(proposed, pages=sorted(proposed["pages"])) for proposed in by_kind.values()]
+            for key, by_kind in sorted(by_key.items())}
 
 
 def build(crf_file: str, pdf_file: str, pdf_sha256: str, page_count: int, page_size: str, design,
-          forms: Iterable, annotations: Iterable, warnings: Iterable, generator: dict, generated: str) -> dict:
+          forms: Iterable, annotations: Iterable, warnings: Iterable, generator: dict, generated: str,
+          crf_sha256: str = None, file_oid: str = None, creation_datetime: str = None) -> dict:
     """
     builds the page-references document
+    :param crf_sha256: the CRF file's sha256; with file_oid and creation_datetime (the ODM root's FileOID and
+        CreationDateTime) it lets a consumer check the JSON belongs to the CRF it has
     :param design: the StudyDesign
     :param forms: FormPages per form in document order (oid, name, domains, named_destination, first_page,
         last_page, visits)
@@ -55,7 +79,7 @@ def build(crf_file: str, pdf_file: str, pdf_sha256: str, page_count: int, page_s
     :return: dict, ready for json.dumps
     """
     data = design.data
-    merged, index, origins, domains = {}, {}, {}, {}
+    merged, index, origins, define_items, domains = {}, {}, {}, {}, {}
     for form in forms:
         for domain in form.domains:
             domains.setdefault(domain, set()).update(range(form.first_page, form.last_page + 1))
@@ -98,19 +122,10 @@ def build(crf_file: str, pdf_file: str, pdf_sha256: str, page_count: int, page_s
             value = target.value if target.value is not None else (item_ref.prespecified_value if item_ref else None)
             for target_key in _keys(target):
                 index.setdefault(target_key, set()).update(pages)
-                if origin is None:
-                    continue
-                by_kind = origins.setdefault(target_key, {})
-                proposed = by_kind.get((origin.type, origin.source))
-                if proposed is None:
-                    proposed = by_kind[(origin.type, origin.source)] = {
-                        "type": origin.type, "source": origin.source, "description": origin.description,
-                        "basis": [], "mapping": [], "values": [], "items": [], "pages": set()}
-                for field_name, item in (("basis", origin.basis), ("values", value), ("items", record.item_oid),
-                                         ("mapping", anno.instruction.kind if anno.instruction else None)):
-                    if item is not None and item not in proposed[field_name]:
-                        proposed[field_name].append(item)
-                proposed["pages"] |= pages
+                if origin is not None:
+                    _add_origin(origins.setdefault(target_key, {}), origin, anno, record, value, pages)
+            if origin is not None and target.define_item_oid:
+                _add_origin(define_items.setdefault(target.define_item_oid, {}), origin, anno, record, value, pages)
     entries = []
     for entry in merged.values():
         entry.pop("_target_keys")
@@ -123,6 +138,9 @@ def build(crf_file: str, pdf_file: str, pdf_sha256: str, page_count: int, page_s
         "generator": dict(generator),
         "generated": generated,
         "crf_file": crf_file,
+        "crf_sha256": crf_sha256,
+        "file_oid": file_oid,
+        "creation_datetime": creation_datetime,
         "pdf_file": pdf_file,
         "pdf_sha256": pdf_sha256,
         "page_count": page_count,
@@ -136,8 +154,8 @@ def build(crf_file: str, pdf_file: str, pdf_sha256: str, page_count: int, page_s
                     "forms": [ref.oid for ref in design.schedule.get(visit, [])]} for visit in design.visits],
         "annotations": entries,
         "index": {key: sorted(pages) for key, pages in sorted(index.items())},
-        "origins": {key: [dict(proposed, pages=sorted(proposed["pages"])) for proposed in by_kind.values()]
-                    for key, by_kind in sorted(origins.items())},
+        "origins": _finished(origins),
+        "define_items": _finished(define_items),
         "domains": {domain: sorted(pages) for domain, pages in sorted(domains.items())},
         "warnings": [asdict(w) for w in warnings],
     }

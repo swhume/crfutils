@@ -17,7 +17,8 @@ is written for these tests.
 `crf-2.0.xml` from data-definition-engine (a 14-form, 394-item CRF) is used only locally, for timing the PDF
 rendering and checking the page-references JSON; its repository's license has a placeholder copyright, so it is
 not copied here. `crf_synthetic.xml` reproduces the parts of it the JSON reads (ItemRef Origins and
-PreSpecifiedValue, mappingInstructions, a prefilled concept sibling).
+PreSpecifiedValue, mappingInstructions, a prefilled concept sibling, and the SDTMItemOIDs / SDTMMappingType
+aliases and Concept fixed values the data-definition-engine declares).
 
 The `golden/` folder holds the crfrefs JSON reports the tests compare against. Regenerate them after a deliberate
 change to the report with `CRFUTILS_UPDATE_GOLDEN=1 pytest tests/test_crfrefs.py`.

@@ -161,6 +161,13 @@ def sort_key(child: ChildRef) -> tuple:
     return (0, 0) if child.order is None else (1, child.order)
 
 
+def parse_level(record_level: str) -> str:
+    """the annotations.parse level of an annotation record's level"""
+    if record_level == "concept":
+        return "concept"
+    return "group" if record_level in ("form", "section") else "item"
+
+
 def level_of(group_type: Union[str, None]) -> str:
     """the annotation level of an ItemGroupDef type"""
     if group_type == FORM:
@@ -188,6 +195,7 @@ class StudyDesign:
         self.forms = self._form_order()
         self._walks = {}
         self._known_domains = None
+        self._outer_domains = None
 
     # --- forms and visits --------------------------------------------------------------------------
 
@@ -354,9 +362,18 @@ class StudyDesign:
                 if alias.context in ("formSectionCompletionInstruction", "completionInstructions")]
 
     def group_domain(self, group_oid: str) -> Union[str, None]:
-        """the first domain a group's annotations name, or None"""
+        """
+        the first domain a group's annotations name, or None. A Concept's annotation is parsed at concept
+        level against the domains the forms and sections name, so its fixed values (VSTESTCD = SYSBP) are
+        not read as a domain
+        """
+        group = self.data.groups.get(group_oid)
+        concept = group is not None and group.type == CONCEPT
         for source, text in self.group_annotations(group_oid):
-            parsed = A.parse(text, level="group", source=source)
+            if concept:
+                parsed = A.parse(text, level="concept", source=source, known_domains=self.outer_domains)
+            else:
+                parsed = A.parse(text, level="group", source=source)
             if parsed.domains:
                 return parsed.domains[0]
         return None
@@ -377,16 +394,32 @@ class StudyDesign:
         to infer a variable's dataset from its prefix
         """
         if self._known_domains is None:
+            domains = set(self.outer_domains)
+            for group in self.data.groups.values():
+                if group.type == CONCEPT:
+                    domain = self.group_domain(group.oid)
+                    if domain:
+                        domains.add(domain)
+            self._known_domains = frozenset(domains)
+        return self._known_domains
+
+    @property
+    def outer_domains(self) -> frozenset:
+        """the domains named outside Concept annotations: by forms and sections, as the dataset of a qualified
+        item variable, and the domain a SUPPxx item annotation supplements. A Concept's annotation is read
+        against these"""
+        if self._outer_domains is None:
             domains = set()
             for group in self.data.groups.values():
-                domain = self.group_domain(group.oid)
-                if domain:
-                    domains.add(domain)
+                if group.type != CONCEPT:
+                    domain = self.group_domain(group.oid)
+                    if domain:
+                        domains.add(domain)
             for record in self.annotations():
                 if record.level in ("item", "codelist-item"):
                     domains.update(A.datasets_named(record.text))
-            self._known_domains = frozenset(domains)
-        return self._known_domains
+            self._outer_domains = frozenset(domains)
+        return self._outer_domains
 
     def annotations(self) -> list:
         """
@@ -426,6 +459,5 @@ class StudyDesign:
         """(AnnotationRecord, ParsedAnnotation) pairs, each parsed with its context domain"""
         known = self.known_domains
         for record in self.annotations():
-            level = "group" if record.level in ("form", "section", "concept") else "item"
-            yield record, A.parse(record.text, level=level, source=record.source,
+            yield record, A.parse(record.text, level=parse_level(record.level), source=record.source,
                                   context_domain=self.context_domain(record.group_path), known_domains=known)

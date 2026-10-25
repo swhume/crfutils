@@ -204,3 +204,24 @@ def test_datasets_named():
     assert A.datasets_named("DM.SEX=M;RS.X/RSY") == {"DM", "RS"}
     assert A.datasets_named("VSORRES when VSTESTCD = SYSBP") == set()
     assert A.datasets_named("[NOT SUBMITTED]; LB.LBORRES") == {"LB"}
+
+
+# concept level
+
+def test_a_concepts_fixed_values_are_targets_not_domain_labels():
+    parsed = _parse("VSTESTCD = SYSBP; VSTEST = Systolic Blood Pressure", level="concept")
+    assert parsed.domains == () and parsed.status == A.PARSED
+    assert [(t.key, t.value) for t in parsed.targets] == [("VS.VSTESTCD", "SYSBP"),
+                                                          ("VS.VSTEST", "Systolic Blood Pressure")]
+    # at form and section level the same text is still read as before
+    assert _parse("VSTESTCD = SYSBP", level="group").domains == ("VSTESTCD",)
+
+
+def test_concept_level_still_reads_domains():
+    assert _parse("VS = Vital Signs", level="concept").domains == ("VS",)
+    assert _parse("DOMAIN = VS", level="concept").domains == ("VS",)
+    assert _parse("VS", level="concept").domains == ("VS",)
+    # with no known domain prefix a NAME = VALUE is a domain label, as at group level
+    assert _parse("QS = Questionnaires", level="concept", known=set()).domains == ("QS",)
+    assert _parse("VSORRES when VSTESTCD = SYSBP", level="concept").targets[0].key == \
+           "VS.VSORRES where VSTESTCD = SYSBP"

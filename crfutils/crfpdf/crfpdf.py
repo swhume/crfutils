@@ -21,7 +21,7 @@ from typing import Union
 from .. import __version__, _common
 from .. import annotations as A
 from .. import mapping as M
-from .._design import CONCEPT, AnnotationRecord, ChildRef
+from .._design import CONCEPT, AnnotationRecord, ChildRef, parse_level
 from ..crfhtml import CrfHtml, CrfHtmlGenerationError
 from . import pagerefs
 
@@ -46,6 +46,8 @@ ANNOTATION_NOT_PAGINATED = "annotation_not_paginated"
 UNPARSED_ANNOTATION = "unparsed_annotation"
 DATASET_UNRESOLVED = "dataset_unresolved"
 SDTM_ALIAS_DISAGREES = "sdtm_alias_disagrees"
+DEFINE_OID_UNPAIRED = "define_oid_unpaired"
+LEAF_HREF_MISMATCH = "leaf_href_mismatch"
 FORM_ORDER = "form_page_order"
 
 
@@ -211,12 +213,17 @@ class CrfPdf:
                     del page.anchors[name]
         pdf_bytes = self._finish_pdf(pypdf, document.write_pdf(), design, forms, renderer.form_ids)
         pdf_name = pdf_name or str(self.default_pdf())
+        leaf = design.data.acrf_leaf
+        if leaf is not None and leaf.href and Path(leaf.href).name != Path(pdf_name).name:
+            # Define-XML page references point into the file the Leaf names
+            warnings.append(Warning(LEAF_HREF_MISMATCH, f"the CRF's AnnotatedCRF leaf is {leaf.href}, the PDF is "
+                                                        f"{Path(pdf_name).name}", None, None))
         refs = pagerefs.build(
             crf_file=str(self.crf_file), pdf_file=pdf_name, pdf_sha256=hashlib.sha256(pdf_bytes).hexdigest(),
             page_count=len(document.pages), page_size=self.page_size, design=design, forms=forms,
             annotations=paginated, warnings=warnings,
             generator={"name": "crfpdf", "version": __version__, "weasyprint": weasyprint.__version__},
-            generated=generated)
+            generated=generated, **self._crf_identity())
         self._result = PdfResult(pdf_bytes=pdf_bytes, html=html, page_count=len(document.pages), forms=forms,
                                  annotations=paginated, refs=refs, weasyprint_version=weasyprint.__version__,
                                  warnings=warnings)
@@ -261,16 +268,16 @@ class CrfPdf:
                 if "anno" not in (span.get("class") or "").split():
                     continue
                 record = _record(span)
-                level = "group" if record.level in ("form", "section", "concept") else "item"
                 context = design.context_domain(record.group_path)
-                parsed = A.parse(record.text, level=level, source=record.source, context_domain=context,
-                                 known_domains=known)
+                parsed = A.parse(record.text, level=parse_level(record.level), source=record.source,
+                                 context_domain=context, known_domains=known)
                 item = design.data.items.get(record.item_oid) if record.item_oid else None
-                instruction = M.classify(M.instructions_text(item.aliases)) if item is not None else None
+                instruction = M.instruction(item.aliases) if item is not None else None
                 if record.level == "item":
                     parsed, disagreement = M.correct(parsed, instruction, context, known)
                     if disagreement:
                         warnings.append(Warning(SDTM_ALIAS_DISAGREES, disagreement, record.form_oid, record.item_oid))
+                parsed = self._pair(record, parsed, design, warnings)
                 spans.append(span)
                 pairs.append((record, parsed))
                 instructions.append(instruction)
@@ -288,10 +295,39 @@ class CrfPdf:
                 if A.DATASET_UNRESOLVED in parsed.warnings:
                     warnings.append(Warning(DATASET_UNRESOLVED, record.text, record.form_oid, record.item_oid))
                 item_ref = design.item_ref(record.group_path[-1], record.item_oid) if record.item_oid else None
-                origin = M.propose(parsed, instruction, item_ref.origins if item_ref is not None else ())
+                origin = M.propose(parsed, instruction, item_ref.origins if item_ref is not None else (),
+                                   level=record.level)
                 annotations.append(AnnotationPages(record, parsed, span.get("id"), None, instruction=instruction,
                                                    item_ref=item_ref, origin=origin))
         return annotations
+
+    @staticmethod
+    def _pair(record: AnnotationRecord, parsed: A.ParsedAnnotation, design, warnings: list) -> A.ParsedAnnotation:
+        """sets each target's define_item_oid from the SDTMItemOIDs alias of the annotated item (item level) or
+        Concept (concept level), and warns about what did not pair"""
+        if record.level == "item":
+            owner = design.data.items.get(record.item_oid)
+        elif record.level == "concept" and record.group_path:
+            owner = design.data.groups.get(record.group_path[-1])
+        else:
+            return parsed
+        if owner is None:
+            return parsed
+        parsed, problems = M.pair_define_oids(parsed, M.define_oids(owner.aliases))
+        for problem in problems:
+            warnings.append(Warning(DEFINE_OID_UNPAIRED, f"{record.text}: {problem}", record.form_oid, record.item_oid))
+        return parsed
+
+    def _crf_identity(self) -> dict:
+        """the CRF's sha256 and its ODM FileOID and CreationDateTime, which tie the JSON to one CRF file"""
+        from lxml import etree
+        try:
+            root = etree.parse(str(self.crf_file)).getroot()
+        except (etree.LxmlError, OSError):
+            root = None
+        return {"crf_sha256": hashlib.sha256(self.crf_file.read_bytes()).hexdigest(),
+                "file_oid": root.get("FileOID") if root is not None else None,
+                "creation_datetime": root.get("CreationDateTime") if root is not None else None}
 
     @staticmethod
     def _set_title(tree, title: str) -> None:

@@ -128,8 +128,8 @@ def test_synthetic_annotation_metrics(synthetic):
     a = synthetic.annotations
     assert (a.annotated_items, a.distinct_items, a.annotated_pct) == (22, 22, 100.0)
     assert (a.form_annotations, a.section_annotations, a.concept_annotations, a.item_annotations,
-            a.codelist_item_annotations) == (3, 5, 0, 22, 2)
-    assert (a.parsed, a.partial, a.unparsed, a.not_submitted) == (31, 0, 1, 3)
+            a.codelist_item_annotations) == (3, 5, 1, 22, 2)
+    assert (a.parsed, a.partial, a.unparsed, a.not_submitted) == (32, 0, 1, 3)
     assert a.datasets == ["AE", "CM", "DM", "SUPPCM", "VS"]
     assert a.unresolved_datasets == 0
     assert a.unparsed_texts == ["see protocol section 5"]

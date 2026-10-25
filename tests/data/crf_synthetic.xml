@@ -12,7 +12,10 @@
     an xhtml TranslatedText; a MethodDef, a ConditionDef and an AnnotatedCRF Leaf;
   - the data-definition-engine shape crfpdf reads origins from: ItemRef Origins and a PreSpecifiedValue in
     IG.CON.SYSBP, a prefilled sibling (VSLOC = ARM) beside value-level targets, and mappingInstructions of each
-    kind, including one (AEENDAT) that names a different SDTMIG variable (AEENDTC) than the SDTM alias.
+    kind, including one (AEENDAT) that names a different SDTMIG variable (AEENDTC) than the SDTM alias;
+  - the facts the data-definition-engine declares (pagerefs schema 2.1): SDTMItemOIDs and SDTMMappingType on
+    SYSBP, SYSBPU, AEENDAT and CMDOSE, and IG.CON.SYSBP's fixed values (VSTESTCD = SYSBP; VSTEST = ...) with
+    their SDTMItemOIDs.
 -->
 <ODM xmlns="http://www.cdisc.org/ns/odm/v2.0" xmlns:xlink="http://www.w3.org/1999/xlink"
      ODMVersion="2.0" FileType="Snapshot" Granularity="Metadata" FileOID="FILE.SYNTH.1"
@@ -95,6 +98,8 @@
         <ItemRef ItemOID="IT.VS.VSLOC" OrderNumber="4" Mandatory="No" PreSpecifiedValue="ARM">
           <Origin Type="Protocol" Source="Sponsor"/>
         </ItemRef>
+        <Alias Context="SDTM" Name="VSTESTCD = SYSBP; VSTEST = Systolic Blood Pressure"/>
+        <Alias Context="SDTMItemOIDs" Name="VS.VSTESTCD=IT.VS.VSTESTCD VS.VSTEST=IT.VS.VSTEST"/>
       </ItemGroupDef>
       <ItemGroupDef OID="IG.SEC.DM" Name="Demographics" Repeating="No" Domain="DM" Type="Section">
         <ItemRef ItemOID="IT.DM.BRTHDTC" OrderNumber="1" Mandatory="Yes"/>
@@ -153,6 +158,8 @@
           <TranslatedText xml:lang="en" Type="text/plain">End date</TranslatedText>
         </Question>
         <Alias Context="SDTM" Name="AEENDAT"/>
+        <Alias Context="SDTMItemOIDs" Name="AE.AEENDTC=IT.AE.AEENDTC"/>
+        <Alias Context="SDTMMappingType" Name="concatenated"/>
         <Alias Context="mappingInstructions" Name="This does not map directly to an SDTMIG variable. For the SDTM submission dataset, concatenate all collected CDASH END DATE and TIME components and populate the SDTMIG variable AEENDTC in ISO 8601 format."/>
       </ItemDef>
       <ItemDef OID="IT.VS.VSPERF" Name="VSPERF" DataType="text">
@@ -176,6 +183,8 @@
           <TranslatedText xml:lang="en" Type="text/plain">Record after 5 minutes seated.</TranslatedText>
         </CRFCompletionInstructions>
         <Alias Context="SDTM" Name="VSORRES when VSTESTCD = SYSBP"/>
+        <Alias Context="SDTMItemOIDs" Name="VS.VSORRES=IT.VS.VSORRES.SYSBP"/>
+        <Alias Context="SDTMMappingType" Name="direct"/>
       </ItemDef>
       <ItemDef OID="IT.VS.SYSBPU" Name="SYSBPU" DataType="text">
         <Prompt>
@@ -183,6 +192,7 @@
         </Prompt>
         <CodeListRef CodeListOID="CL.VSU"/>
         <Alias Context="SDTM" Name="VSORRESU = mmHg when VSTESTCD = SYSBP"/>
+        <Alias Context="SDTMItemOIDs" Name="VS.VSORRESU=IT.VS.VSORRESU.SYSBP"/>
       </ItemDef>
       <ItemDef OID="IT.VS.VSPOS" Name="VSPOS" DataType="text">
         <Prompt>
@@ -247,6 +257,8 @@
           <TranslatedText xml:lang="en" Type="text/plain">Dose</TranslatedText>
         </Question>
         <Alias Context="SDTM" Name="CMDOSE;CMDOSTXT"/>
+        <Alias Context="SDTMItemOIDs" Name="CM.CMDOSE=IT.CM.CMDOSE CM.CMDOSTXT=IT.CM.CMDOSTXT"/>
+        <Alias Context="SDTMMappingType" Name="split"/>
         <Alias Context="mappingInstructions" Name="Numeric values map to CMDOSE in SDTM. Non-numeric values map to CMDOSTXT in SDTM."/>
       </ItemDef>
       <ItemDef OID="IT.CM.CMINDC" Name="CMINDC" DataType="text" Length="100">

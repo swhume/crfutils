@@ -7,7 +7,9 @@ reads the forms found in real ODM v2.0 CRFs:
 - targets: ``VSORRES``, ``DM.SEX=M``, ``VSORRESU = mmHg when VSTESTCD = SYSBP``,
   ``RSSTRESN/RSSTRESC where RSTESTCD=ATLAS101``, ``FTASTDEV in SUPPFT``;
 - several targets in one annotation, separated by ``;``: ``CMDOSE;CMDOSTXT``;
-- ``[NOT SUBMITTED]``, alone or with targets.
+- ``[NOT SUBMITTED]``, alone or with targets;
+- at Concept level, a concept's fixed values: ``VSTESTCD = SYSBP; VSTEST = Systolic Blood Pressure`` are targets
+  (a ``NAME = VALUE`` whose name has a known-domain prefix), not domain labels like ``VS = Vital Signs``.
 
 Anything it cannot read is kept verbatim in ``unparsed`` with a warning.
 
@@ -63,6 +65,7 @@ class Target:
     qnam: Union[str, None]          # for `X in SUPPxx`: X
     key: str                        # target_key(dataset, variable, where)
     variable_source: str = "annotation"     # "annotation" | "mappingInstructions" (set by mapping.correct)
+    define_item_oid: Union[str, None] = None    # the Define-XML ItemDef the CRF pairs it with (SDTMItemOIDs)
 
 
 @dataclass
@@ -185,7 +188,8 @@ def parse(text: str, level: str = "item", source: Union[str, None] = None,
     """
     parses one annotation. Never raises
     :param text: the annotation text
-    :param level: "group" for a form, section or concept annotation; "item" for an item or codelist item
+    :param level: "group" for a form or section annotation; "concept" for a concept annotation, which reads
+        `NAME = VALUE` as a target when NAME has a known-domain prefix; "item" for an item or codelist item
     :param source: where the text came from; an "attr:Domain" value is a domain as it stands
     :param context_domain: the domain of the innermost enclosing group, for an unqualified variable
     :param known_domains: the domains the document names, for the prefix rule and for telling a bare
@@ -235,6 +239,11 @@ def parse(text: str, level: str = "item", source: Union[str, None] = None,
     return result
 
 
+def _has_domain_prefix(name: str, known: frozenset) -> bool:
+    """whether a known domain is a strict prefix of the name, as for a variable (VSTESTCD and VS)"""
+    return any(name.startswith(domain) and len(name) > len(domain) for domain in known)
+
+
 def _parse_domain(segment: str, level: str, known: frozenset) -> Union[str, None]:
     """the domain a segment names, or None when it is not a domain form"""
     match = _DOMAIN_EQ_RE.match(segment)
@@ -242,12 +251,16 @@ def _parse_domain(segment: str, level: str, known: frozenset) -> Union[str, None
         return match.group(1)
     if _SUPP_RE.match(segment):
         return segment
+    group_level = level in ("group", "concept")
+    # at Concept level `VSTESTCD = SYSBP` fixes a variable's value: a target, not a domain label
+    fixed_value = level == "concept"
     match = _DOMAIN_LABEL_RE.match(segment)
-    if match and level == "group" and match.group(1) not in NOT_DOMAINS:
-        return match.group(1)
+    if match and group_level and match.group(1) not in NOT_DOMAINS:
+        if not (fixed_value and match.group(3) is not None and _has_domain_prefix(match.group(1), known)):
+            return match.group(1)
     if _DOMAIN_RE.match(segment) and segment not in NOT_DOMAINS:
         # at group level a bare token is a domain; at item level only a known domain is
-        if level == "group" or segment in known:
+        if (group_level and not (fixed_value and _has_domain_prefix(segment, known))) or segment in known:
             return segment
     return None
 

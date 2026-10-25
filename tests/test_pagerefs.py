@@ -1,4 +1,6 @@
 """pagerefs: the page-references document built from plain values, without rendering a PDF."""
+from dataclasses import replace
+
 from conftest import SYNTHETIC
 from crfutils import _odm
 from crfutils import annotations as A
@@ -43,3 +45,26 @@ def test_origins_are_grouped_by_type_and_source():
 def test_an_annotation_without_a_proposed_origin_is_indexed_only():
     refs = _build([_anno("IT.VS.SYSBP", "VSORRESU = mmHg when VSTESTCD = SYSBP", 5, None)])
     assert refs["index"]["VS.VSORRESU"] == [5] and refs["origins"] == {}
+
+
+def test_define_items_are_filed_under_the_paired_define_oid():
+    protocol = M.ProposedOrigin("Protocol", "Sponsor", M.BASIS_ITEMREF, None)
+    collected = M.ProposedOrigin("Collected", "Investigator", M.BASIS_ITEMREF, None)
+    paired = _anno("IT.VS.SYSBPU", "VSORRESU = mmHg when VSTESTCD = SYSBP", 5, protocol)
+    parsed, _ = M.pair_define_oids(paired.parsed, {"VS.VSORRESU": "IT.VS.VSORRESU.SYSBP"})
+    refs = _build([replace(paired, parsed=parsed),
+                   _anno("IT.VS.TEMPU", "VSORRESU when VSTESTCD = TEMP", 7, collected)])
+    assert list(refs["define_items"]) == ["IT.VS.VSORRESU.SYSBP"]
+    assert refs["define_items"]["IT.VS.VSORRESU.SYSBP"] == refs["origins"]["VS.VSORRESU where VSTESTCD = SYSBP"]
+    assert refs["annotations"][0]["targets"][0]["define_item_oid"] == "IT.VS.VSORRESU.SYSBP"
+    assert refs["annotations"][1]["targets"][0]["define_item_oid"] is None
+
+
+def test_crf_identity_is_recorded():
+    refs = _build([])
+    assert (refs["crf_sha256"], refs["file_oid"], refs["creation_datetime"]) == (None, None, None)
+    design = StudyDesign(_odm.design_from_lxml(_odm.parse_odm(SYNTHETIC, RuntimeError)))
+    refs = pagerefs.build(crf_file="crf.xml", pdf_file="acrf.pdf", pdf_sha256="0" * 64, page_count=1,
+                          page_size="letter", design=design, forms=[], annotations=[], warnings=[], generator={},
+                          generated="", crf_sha256="a" * 64, file_oid="FILE.SYNTH.1", creation_datetime="2026")
+    assert (refs["crf_sha256"], refs["file_oid"], refs["creation_datetime"]) == ("a" * 64, "FILE.SYNTH.1", "2026")

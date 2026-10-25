@@ -162,3 +162,59 @@ def test_propose(text, instruction, origins, expected):
 def test_propose_nothing_without_targets():
     assert M.propose(_parse("[NOT SUBMITTED]"), None, (Origin("Collected", "Investigator"),)) is None
     assert M.propose(A.parse("VS", level="group")) is None
+
+
+# the facts a CRF declares (pagerefs schema 2.1)
+
+def test_a_declared_mapping_type_replaces_the_classified_kind():
+    declared = M.instruction([Alias("mappingInstructions", RELATIVE), Alias("SDTMMappingType", "direct")])
+    assert (declared.kind, declared.kind_source, declared.variables) == ("direct", "crf", ())
+    assert declared.text == A.normalize(RELATIVE)
+    prose = M.instruction([Alias("mappingInstructions", SPLIT)])
+    assert (prose.kind, prose.kind_source) == ("split", "mappingInstructions")
+    alone = M.instruction([Alias("SDTMMappingType", " Relative_Timing ")])
+    assert (alone.kind, alone.kind_source, alone.text) == ("relative_timing", "crf", "")
+    # an unknown code is ignored, and "other" is never declared
+    assert M.instruction([Alias("SDTMMappingType", "other"), Alias("mappingInstructions", DIRECT)]).kind == "direct"
+    assert M.instruction([Alias("SDTMMappingType", "sideways")]) is None
+    assert M.instruction([]) is None
+
+
+def test_define_oids():
+    pairs = M.define_oids([Alias("SDTMItemOIDs", "VS.VSORRES=IT.VS.VSORRES.SYSBP  VS.VSTESTCD=IT.VS.VSTESTCD junk")])
+    assert pairs == {"VS.VSORRES": "IT.VS.VSORRES.SYSBP", "VS.VSTESTCD": "IT.VS.VSTESTCD"}
+    assert M.define_oids([Alias("SDTM", "VSORRES")]) is None
+
+
+def test_pair_define_oids():
+    parsed = _parse("VSORRES when VSTESTCD = SYSBP")
+    paired, problems = M.pair_define_oids(parsed, {"VS.VSORRES": "IT.VS.VSORRES.SYSBP"})
+    assert paired.targets[0].define_item_oid == "IT.VS.VSORRES.SYSBP" and problems == []
+    # a SUPP target pairs on its dataset and QVAL
+    supp, problems = M.pair_define_oids(_parse("CMINDC in SUPPCM"), {"SUPPCM.QVAL": "IT.SUPPCM.QVAL.CMINDC"})
+    assert supp.targets[0].define_item_oid == "IT.SUPPCM.QVAL.CMINDC" and problems == []
+    unpaired, problems = M.pair_define_oids(parsed, {"VS.VSSTRESN": "IT.X"})
+    assert unpaired.targets[0].define_item_oid is None
+    assert problems == ["target VS.VSORRES where VSTESTCD = SYSBP has no SDTMItemOIDs pair",
+                        "SDTMItemOIDs pair VS.VSSTRESN=IT.X names no target"]
+    # without the alias nothing is paired and nothing is reported
+    assert M.pair_define_oids(parsed, None) == (parsed, [])
+
+
+def test_enrich_keeps_the_define_item_oid():
+    record = _record("IT.LB.PT", level="item")
+    sibling = _record("IT.LB.LBSPEC", level="item")
+    paired, _ = M.pair_define_oids(_parse("LBORRES when LBTESTCD = PT"), {"LB.LBORRES": "IT.LB.LBORRES.PT"})
+    enriched = M.enrich([(record, paired), (sibling, _parse("LBSPEC = BLOOD"))], ["IG.CON.PT"])
+    assert enriched[0].targets[0].key == "LB.LBORRES where LBSPEC = BLOOD and LBTESTCD = PT"
+    assert enriched[0].targets[0].define_item_oid == "IT.LB.LBORRES.PT"
+
+
+def test_propose_protocol_for_a_concepts_fixed_values():
+    fixed = A.parse("VSTESTCD = SYSBP; VSTEST = Systolic Blood Pressure", level="concept", known_domains=KNOWN)
+    assert M.propose(fixed, level="concept") == M.ProposedOrigin("Protocol", "Sponsor", "concept", None)
+    # a concept annotation with a where clause (vocabulary A) is not a fixed value
+    targeted = A.parse("VSORRES when VSTESTCD = SYSBP", level="concept", known_domains=KNOWN)
+    assert M.propose(targeted, level="concept").basis == "annotation"
+    # the same text on an item keeps the item rules
+    assert M.propose(_parse("VSTESTCD = SYSBP")).basis == "annotation"

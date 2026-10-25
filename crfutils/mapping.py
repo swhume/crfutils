@@ -12,8 +12,12 @@ A data-definition tool needs three things the SDTM annotation alone does not giv
   group assigns (``LBSPEC = BLOOD``) to the where clause of each value-level target (``LBORRES when LBTESTCD =
   PT``), with ``source="concept"``, so the target can be matched to a Define-XML where clause that has both;
 - a proposed Origin, from ``propose``: Derived when the field feeds its targets indirectly (relative timing,
-  the numeric/text split, or a NOT SUBMITTED field that names targets); else the ItemRef's Origin; else
-  Collected with a placeholder source.
+  the numeric/text split, or a NOT SUBMITTED field that names targets); Protocol for a concept's fixed values
+  (VSTESTCD = SYSBP); else the ItemRef's Origin; else Collected with a placeholder source.
+
+A CRF can also state these facts outright, as the data-definition-engine writes them: ``instruction`` takes the
+kind from ``Alias Context="SDTMMappingType"`` when present (``kind_source`` "crf"), and ``pair_define_oids``
+joins each target to the Define-XML ItemDef the ``SDTMItemOIDs`` alias names (``DATASET.VARIABLE=OID`` pairs).
 
 Pure Python like annotations.py, and like it never raises.
 """
@@ -24,6 +28,8 @@ from typing import Iterable, Union
 from . import annotations as A
 
 INSTRUCTIONS_CONTEXT = "mappingInstructions"
+MAPPING_TYPE_CONTEXT = "SDTMMappingType"
+DEFINE_OIDS_CONTEXT = "SDTMItemOIDs"
 PLACEHOLDER = "__PLACEHOLDER__"
 
 DIRECT, CONCATENATED, RELATIVE_TIMING, SPLIT, NOT_SUBMITTED, OTHER = (
@@ -45,9 +51,12 @@ _NAMED_RE = re.compile(rf"\bSDTM(?:IG)? variable ({A.DOMAIN_PATTERN})\b")
 
 DERIVED, COLLECTED = "Derived", "Collected"
 SPONSOR = "Sponsor"
+PROTOCOL = "Protocol"
+# the kinds a CRF can declare in SDTMMappingType (OTHER is only ever inferred)
+DECLARED_KINDS = (DIRECT, CONCATENATED, RELATIVE_TIMING, SPLIT, NOT_SUBMITTED)
 # why propose() chose its origin
-BASIS_INSTRUCTIONS, BASIS_NOT_SUBMITTED, BASIS_ITEMREF, BASIS_ANNOTATION = (
-    "mappingInstructions", "not_submitted", "ItemRef/Origin", "annotation")
+BASIS_INSTRUCTIONS, BASIS_NOT_SUBMITTED, BASIS_ITEMREF, BASIS_ANNOTATION, BASIS_CONCEPT = (
+    "mappingInstructions", "not_submitted", "ItemRef/Origin", "annotation", "concept")
 
 
 @dataclass(frozen=True)
@@ -55,6 +64,7 @@ class MappingInstruction:
     text: str
     kind: str                       # DIRECT | CONCATENATED | RELATIVE_TIMING | SPLIT | NOT_SUBMITTED | OTHER
     variables: tuple                # the SDTMIG variables the text names to populate, in order
+    kind_source: str = "mappingInstructions"    # "mappingInstructions" (classified prose) | "crf" (SDTMMappingType)
 
 
 @dataclass(frozen=True)
@@ -68,6 +78,61 @@ class ProposedOrigin:
 def instructions_text(aliases: Iterable) -> Union[str, None]:
     """the text of an ItemDef's mappingInstructions alias (the XSD allows one per context), or None"""
     return next((alias.name for alias in aliases if alias.context == INSTRUCTIONS_CONTEXT), None)
+
+
+def instruction(aliases: Iterable) -> Union[MappingInstruction, None]:
+    """
+    an ItemDef's mapping instruction: classify() of its mappingInstructions text, with the kind replaced by the
+    one the CRF declares in an SDTMMappingType alias (kind_source "crf"). An unknown declared code is ignored
+    """
+    aliases = list(aliases)
+    classified = classify(instructions_text(aliases))
+    declared = next((alias.name for alias in aliases if alias.context == MAPPING_TYPE_CONTEXT), None)
+    declared = A.normalize(declared).lower() if declared else None
+    if declared not in DECLARED_KINDS:
+        return classified
+    if classified is None:
+        return MappingInstruction("", declared, (), "crf")
+    return replace(classified, kind=declared, kind_source="crf")
+
+
+def define_oids(aliases: Iterable) -> Union[dict, None]:
+    """
+    the SDTMItemOIDs pairs of an ItemDef or Concept as {"DATASET.VARIABLE": OID}, or None when it has no such
+    alias. Pairs are space-separated `DATASET.VARIABLE=OID`; a token without "=" is ignored
+    """
+    text = next((alias.name for alias in aliases if alias.context == DEFINE_OIDS_CONTEXT), None)
+    if text is None:
+        return None
+    pairs = {}
+    for token in A.normalize(text).split(" "):
+        name, _, oid = token.partition("=")
+        if name and oid:
+            pairs.setdefault(name, oid)
+    return pairs
+
+
+def pair_define_oids(parsed: A.ParsedAnnotation, pairs: Union[dict, None]) -> tuple:
+    """
+    sets define_item_oid on each target its DATASET.VARIABLE pair names
+    :param pairs: define_oids() of the annotated ItemDef or Concept; None when it has no SDTMItemOIDs alias
+    :return: (ParsedAnnotation, a list of what did not pair): a target without a pair, or a pair that names no
+        target. Nothing is reported when the alias is absent
+    """
+    if pairs is None:
+        return parsed, []
+    targets, used, problems = [], set(), []
+    for target in parsed.targets:
+        name = f"{target.dataset}.{target.variable}" if target.dataset else target.variable
+        oid = pairs.get(name)
+        if oid is None:
+            problems.append(f"target {target.key} has no SDTMItemOIDs pair")
+            targets.append(target)
+        else:
+            used.add(name)
+            targets.append(replace(target, define_item_oid=oid))
+    problems += [f"SDTMItemOIDs pair {name}={oid} names no target" for name, oid in pairs.items() if name not in used]
+    return replace(parsed, targets=tuple(targets)), problems
 
 
 def classify(text: Union[str, None]) -> Union[MappingInstruction, None]:
@@ -154,9 +219,11 @@ def enrich(annotations: list, concepts: Iterable[str]) -> list:
 
 
 def propose(parsed: A.ParsedAnnotation, instruction: Union[MappingInstruction, None] = None,
-            origins: Iterable = ()) -> Union[ProposedOrigin, None]:
+            origins: Iterable = (), level: str = "item") -> Union[ProposedOrigin, None]:
     """
     the Origin an annotation suggests for its targets; None when it names none.
+    - Protocol (Sponsor) for a concept's fixed values: a Concept annotation whose every target assigns a value
+      and has no where clause (VSTESTCD = SYSBP; LBCAT = CHEMISTRY);
     - Derived (Sponsor) when the field feeds its targets indirectly: the mapping instructions say relative
       timing or a numeric/text split, or the annotation is NOT SUBMITTED yet names targets;
     - else the first ItemRef Origin with a Type (date and time concatenated into --DTC stay as collected);
@@ -166,6 +233,8 @@ def propose(parsed: A.ParsedAnnotation, instruction: Union[MappingInstruction, N
     """
     if not parsed.targets:
         return None
+    if level == "concept" and all(t.value is not None and not t.where for t in parsed.targets):
+        return ProposedOrigin(PROTOCOL, SPONSOR, BASIS_CONCEPT, None)
     if instruction is not None and instruction.kind in INDIRECT:
         return ProposedOrigin(DERIVED, SPONSOR, BASIS_INSTRUCTIONS, PLACEHOLDER)
     if parsed.not_submitted:

@@ -299,7 +299,7 @@ crfmetrics -c tests/data/crf_synthetic.xml --json -o metrics.json
 ```
 ODM v2.0 CRF metrics
   File:     tests/data/crf_synthetic.xml
-  Size:     19,839 bytes (19.4 KiB)
+  Size:     20,771 bytes (20.3 KiB)
   Created:  2026-10-17T09:00:00  (ODM/@CreationDateTime)
   Modified: 2026-10-17T09:29:34  (file system)
   Model:    ODM v2.0 (odmlib odm_2_0, odmlib 0.3.0)
@@ -324,8 +324,8 @@ CRF
 
 ANNOTATIONS
   Items annotated:   22 of 22 (100%)
-  By level:          form 3, section 5, concept 0, item 22, codelist item 2
-  Parsed:            31 parsed, 0 partial, 1 unparsed
+  By level:          form 3, section 5, concept 1, item 22, codelist item 2
+  Parsed:            32 parsed, 0 partial, 1 unparsed
   NOT SUBMITTED:     3
   Datasets:          AE, CM, DM, SUPPCM, VS
 
@@ -338,7 +338,7 @@ ELEMENT COUNTS
   ...
 
 SUMMARY
-  250 elements across 124 element types (32 present, 92 absent)
+  259 elements across 124 element types (32 present, 92 absent)
   4 forms, 22 item rows, 22 item definitions, 7 code lists, 1 method, 5 visit-form links
 ```
 
@@ -360,21 +360,26 @@ crfpdf -c tests/data/crf_synthetic.xml --page-size a4 --html acrf.html --validat
 ```
 
 ```
-Wrote acrf.pdf (7 pages: 4 forms, 3 visits) and acrf.pagerefs.json (31 annotations)
+Wrote acrf.pdf (7 pages: 4 forms, 3 visits) and acrf.pagerefs.json (32 annotations)
 ```
 
 ## The page-references JSON and Define-XML
 
 `crfpdf` writes, beside the PDF, a JSON document from which a Define-XML tool can write the `def:Origin` of each
 SDTM variable and value-level item: a proposed `Type` and `Source`, and the `def:PDFPageRef` page references. Its
-`schema_version` is `2.0`; it is bumped on any change to the shape or to the key grammar.
+`schema_version` is `2.1`; it is bumped on any change to the shape or to the key grammar. 2.1 added, without
+changing anything 2.0 had, what a CRF can declare outright (the data-definition-engine writes it): the
+Define-XML ItemDef each target populates (`define_item_oid`, and the `define_items` index), the mapping kind
+(`kind_source: "crf"`), a concept's fixed values, and the CRF identity (`crf_sha256`, `file_oid`,
+`creation_datetime`).
 
 ```json
 {
-  "schema_version": "2.0",
+  "schema_version": "2.1",
   "key_format": "DATASET.VARIABLE[ where VAR = VALUE[ and ...]]",
   "generator": {"name": "crfpdf", "version": "0.1.0", "weasyprint": "68.1"},
-  "crf_file": "crf.xml", "pdf_file": "acrf.pdf", "pdf_sha256": "...", "page_count": 7, "page_size": "letter",
+  "crf_file": "crf.xml", "crf_sha256": "...", "file_oid": "FILE.SYNTH.1", "creation_datetime": "2026-10-17T09:00:00",
+  "pdf_file": "acrf.pdf", "pdf_sha256": "...", "page_count": 7, "page_size": "letter",
   "study": {"oid": "ST.SYNTH", "name": "SYNTH", "protocol": "SYNTH-001", "mdv_oid": "MDV.1"},
   "leaf": {"id": "LF.acrf", "href": "acrf.pdf", "title": "Annotated CRF"},
   "forms": [{"oid": "IG.FORM.VS", "name": "Vital Signs", "domains": ["VS"], "named_destination": "F.IG.FORM.VS",
@@ -391,7 +396,8 @@ SDTM variable and value-level item: a proposed `Type` and `Source`, and the `def
                                            "source": "annotation"},
                                           {"variable": "VSLOC", "comparator": "EQ", "values": ["ARM"],
                                            "source": "concept"}],
-                                "qnam": null, "key": "VS.VSORRESU where VSLOC = ARM and VSTESTCD = SYSBP"}],
+                                "qnam": null, "key": "VS.VSORRESU where VSLOC = ARM and VSTESTCD = SYSBP",
+                                "define_item_oid": "IT.VS.VSORRESU.SYSBP"}],
                    "item_origins": [{"type": "Protocol", "source": "Sponsor"}], "prespecified_value": "mmHg",
                    "mapping_instructions": null,
                    "proposed_origin": {"type": "Protocol", "source": "Sponsor", "basis": "ItemRef/Origin",
@@ -405,6 +411,12 @@ SDTM variable and value-level item: a proposed `Type` and `Source`, and the `def
               "CM.CMSTRF": [{"type": "Derived", "source": "Sponsor", "description": "__PLACEHOLDER__",
                              "basis": ["mappingInstructions"], "mapping": ["relative_timing"], "values": [],
                              "items": ["IT.CM.CMSTRF"], "pages": [6]}]},
+  "define_items": {"IT.VS.VSORRESU.SYSBP": [{"type": "Protocol", "source": "Sponsor", "description": null,
+                                             "basis": ["ItemRef/Origin"], "mapping": [], "values": ["mmHg"],
+                                             "items": ["IT.VS.SYSBPU"], "pages": [5]}],
+                   "IT.VS.VSTESTCD": [{"type": "Protocol", "source": "Sponsor", "description": null,
+                                       "basis": ["concept"], "mapping": [], "values": ["SYSBP"], "items": [],
+                                       "pages": [5]}]},
   "domains": {"VS": [5]},
   "warnings": [{"check": "sdtm_alias_disagrees",
                 "text": "the SDTM annotation names AEENDAT; the mapping instructions name AEENDTC",
@@ -416,6 +428,8 @@ SDTM variable and value-level item: a proposed `Type` and `Source`, and the `def
   `formSectionAnnotation` contexts and `ItemGroupDef/@Domain`) and parsed with a lenient grammar: `DOMAIN = VS`,
   `VS (Vital Signs)`, `VSORRES when VSTESTCD = SYSBP`, `DM.SEX=M`, `RSSTRESN/RSSTRESC where RSTESTCD=ATLAS101`,
   `FTASTDEV in SUPPFT`, `CMDOSE;CMDOSTXT`, `[NOT SUBMITTED]`. Text it cannot read is kept verbatim with a warning.
+  At Concept level a `NAME = VALUE` whose name has a known domain prefix is a target, not a domain label: a
+  concept's fixed values (`VSTESTCD = SYSBP; VSTEST = Systolic Blood Pressure`, a hidden `LBCAT = CHEMISTRY`).
 - A variable's dataset is the qualifier when there is one (`DM.SEX`), else the `SUPPxx` it is placed in, else
   the longest domain the document names that is a prefix of the variable (`VSORRES` -> `VS`), else the domain of
   the innermost enclosing form or section; `dataset_source` records which rule applied.
@@ -425,7 +439,13 @@ SDTM variable and value-level item: a proposed `Type` and `Source`, and the `def
   name the SDTMIG variable to populate and the SDTM alias names a single different one (an alias of `AESTDAT`
   whose instructions populate `AESTDTC`), the target becomes the named variable (`variable_source:
   "mappingInstructions"`) and an `sdtm_alias_disagrees` warning is recorded; so is an alias that names targets
-  when the instructions say the field is not submitted. The PDF still shows the alias as written.
+  when the instructions say the field is not submitted. The PDF still shows the alias as written. A CRF can
+  declare the kind instead, in `Alias[@Context='SDTMMappingType']` (`direct`, `concatenated`, `relative_timing`,
+  `split` or `not_submitted`): it replaces the classified kind and `mapping_instructions.kind_source` is `"crf"`.
+- **Define-XML item OIDs.** `Alias[@Context='SDTMItemOIDs']` on an ItemDef, or on a Concept for its fixed values,
+  lists space-separated `DATASET.VARIABLE=OID` pairs; each target gets the `define_item_oid` its
+  `DATASET.VARIABLE` pairs with (a SUPP target pairs as `SUPPxx.QVAL`). A target with no pair, or a pair that names
+  no target, is a `define_oid_unpaired` warning. Nothing is paired or reported when the alias is absent.
 - **Concept conditions.** Within a Concept ItemGroupDef, another item's fixed value -- a `VAR = VALUE` target
   with no where clause of its own, such as `LBSPEC = BLOOD` -- is added to the where clause of every value-level
   target in the same dataset that does not test that variable, with `"source": "concept"`. A variable given two
@@ -438,22 +458,35 @@ SDTM variable and value-level item: a proposed `Type` and `Source`, and the `def
     `PreSpecifiedValue="mmHg"` usually has `Protocol` / `Sponsor`); date and time concatenated into --DTC stay
     `Collected`;
   - else `Collected` with a `__PLACEHOLDER__` source: the CRF does not say who records the value.
+  - A Concept annotation whose targets all assign a value with no where clause (a concept's fixed values) is
+    `Protocol` / `Sponsor`, with `basis` `concept` and the pages of its form.
   `basis` says which rule applied. `values` holds the annotated values, or the ItemRef's `PreSpecifiedValue`.
 - `index` and `origins` have the same keys: every target key, the key without the concept conditions, and a
   variable-level roll-up (`VS.VSORRESU`) that is the union of its value-level keys. `origins[key]` holds one
   entry per distinct (`type`, `source`) among the targets filed under the key. `domains` holds each domain's
-  pages: the pages of the forms annotated with it, plus the pages of its targets.
+  pages: the pages of the forms annotated with it, plus the pages of its targets. `define_items` holds the same
+  entries filed under each target's `define_item_oid`.
+- **Staleness.** `crf_sha256` is the CRF file's hash; `file_oid` and `creation_datetime` are the ODM root's
+  `FileOID` and `CreationDateTime`. A consumer that regenerates the CRF should compare `crf_sha256` (a CRF the
+  data-definition-engine regenerates keeps its FileOID and CreationDateTime, which come from its DDS). A PDF named
+  differently from the CRF's AnnotatedCRF leaf is a `leaf_href_mismatch` warning: Define-XML page references
+  point into the file the leaf names.
 - **Consumer recipe.**
-  - Variable-level origin: `origins["<Domain>.<Name>"]`.
-  - Value-level origin: build the Define-XML where clause from the ValueListDef/ItemRef/WhereClauseRef chain
-    (`WhereClauseDef/RangeCheck`: the `ItemOID`'s `Name`, `Comparator` `EQ`, `NE` or `IN`, the `CheckValue`s). A
-    CRF target matches when it has the same dataset and variable, **every** condition with `"source":
-    "annotation"` is in the where clause, and no condition with `"source": "concept"` contradicts a condition
-    the where clause has on the same variable (a concept condition on a variable the where clause does not test
-    is ignored). Merge `origins[target.key]` over the matching targets by `type` and `source`. The where clause
-    may test more variables than the annotation does (a Define-XML clause on VSTESTCD, VSPOS, VSLOC and VSLAT
-    matches `VSORRES when VSTESTCD = SYSBP`). For an exact lookup instead, conditions are sorted by variable and
-    written `VAR = VALUE`, `VAR NE VALUE` or `VAR IN (A, B)` with the IN values sorted.
+  - When the CRF declares Define-XML item OIDs, use `define_items["<ItemDef OID>"]` first: it is an exact join.
+  - Otherwise, variable-level origin: `origins["<Domain>.<Name>"]`.
+  - Otherwise, value-level origin: build the Define-XML where clause from the ValueListDef/ItemRef/WhereClauseRef
+    chain (`WhereClauseDef/RangeCheck`: the `ItemOID`'s `Name`, `Comparator` `EQ`, `NE` or `IN`, the
+    `CheckValue`s). A where-clause condition **admits** a value when `EQ` equals it, `IN` lists it, or `NE`
+    differs from it. A CRF target matches when it has the same dataset and variable, **every** condition with
+    `"source": "annotation"` is on a variable the where clause tests and its values are admitted, and every
+    condition with `"source": "concept"` is admitted by the where clause's condition on the same variable (a
+    concept condition on a variable the where clause does not test is ignored). Merge `origins[target.key]` over
+    the matching targets by `type` and `source`. The where clause may test more variables than the annotation
+    does, and specialization ranges are often IN lists: a Define-XML clause `VSTESTCD EQ SYSBP and VSPOS IN
+    (PRONE, SEMI-RECUMBENT, SITTING) and VSLOC IN (BRACHIAL ARTERY, RADIAL ARTERY)` matches `VSORRES when
+    VSTESTCD = SYSBP`, and admits a concept condition `VSPOS = SITTING` but not `VSPOS = SUPINE`. For an exact
+    lookup instead, conditions are sorted by variable and written `VAR = VALUE`, `VAR NE VALUE` or `VAR IN (A, B)`
+    with the IN values sorted.
   - Emit `def:Origin Type Source`, and for `Collected` and `Derived` origins
     `<def:DocumentRef leafID="LF.acrf"><def:PDFPageRef PageRefs="5 12" Type="PhysicalRef"/></def:DocumentRef>`,
     or `FirstPage`/`LastPage` for one contiguous range. A `Derived` origin's `__PLACEHOLDER__` description stands

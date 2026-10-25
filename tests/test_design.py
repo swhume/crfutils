@@ -203,14 +203,17 @@ def test_group_annotations_by_level(synthetic):
     assert synthetic.group_annotations("IG.SEC.VS") == [("alias:SDTM", "VS (Vital Signs)")]
     assert synthetic.group_annotations("IG.SEC.CM") == [("alias:formSectionAnnotation", "CM")]
     assert synthetic.group_annotations("IG.SEC.AE") == [("attr:Domain", "AE")]
-    assert synthetic.group_annotations("IG.CON.SYSBP") == []
+    assert synthetic.group_annotations("IG.CON.SYSBP") == [
+        ("alias:SDTM", "VSTESTCD = SYSBP; VSTEST = Systolic Blood Pressure")]
     assert synthetic.completion_instructions("IG.SEC.CM") == ["One row per medication."]
 
 
 def test_group_and_context_domains(synthetic):
     assert synthetic.group_domain("IG.FORM.VS") == "VS"
     assert synthetic.group_domain("IG.SEC.VS") == "VS"
+    # the concept's fixed values are targets, not a domain label, so they add no domain
     assert synthetic.group_domain("IG.CON.SYSBP") is None
+    assert not {"VSTESTCD", "VSTEST"} & synthetic.known_domains
     assert synthetic.context_domain(("IG.FORM.VS", "IG.SEC.VS", "IG.CON.SYSBP")) == "VS"
     assert synthetic.known_domains == frozenset({"AE", "CM", "DM", "VS"})
 
@@ -218,9 +221,9 @@ def test_group_and_context_domains(synthetic):
 def test_annotation_records(synthetic):
     records = synthetic.annotations()
 
-    assert len(records) == 32
+    assert len(records) == 33
     levels = {record.level for record in records}
-    assert levels == {"form", "section", "item", "codelist-item"}
+    assert levels == {"form", "section", "concept", "item", "codelist-item"}
     sex = [r for r in records if r.level == "codelist-item"]
     assert [(r.coded_value, r.text) for r in sex] == [("M", "DM.SEX=M"), ("F", "DM.SEX=F")]
     assert sex[0].item_oid == "IT.DM.SEX" and sex[0].codelist_oid == "CL.SEX"

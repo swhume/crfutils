@@ -3,6 +3,7 @@ crfpdf: the annotated CRF PDF checked with pypdf -- bookmarks, page mode, title,
 size, footers, the annotation pages recorded in the JSON -- and the page-references JSON itself. Skipped when
 WeasyPrint (or the Pango it needs) is not installed.
 """
+import hashlib
 import io
 import json
 import re
@@ -176,10 +177,13 @@ def test_annotations_are_coloured_by_domain(rendered):
 
 def test_json_structure(rendered):
     refs = rendered[1].refs
-    assert set(refs) == {"schema_version", "key_format", "generator", "generated", "crf_file", "pdf_file", "pdf_sha256",
-                         "page_count", "page_size", "study", "leaf", "forms", "visits", "annotations", "index",
-                         "origins", "domains", "warnings"}
-    assert refs["schema_version"] == SCHEMA_VERSION == "2.0"
+    assert set(refs) == {"schema_version", "key_format", "generator", "generated", "crf_file", "crf_sha256", "file_oid",
+                         "creation_datetime", "pdf_file", "pdf_sha256", "page_count", "page_size", "study", "leaf",
+                         "forms", "visits", "annotations", "index", "origins", "define_items", "domains", "warnings"}
+    assert refs["schema_version"] == SCHEMA_VERSION == "2.1"
+    # what ties the JSON to one CRF file
+    assert refs["crf_sha256"] == hashlib.sha256(SYNTHETIC.read_bytes()).hexdigest()
+    assert (refs["file_oid"], refs["creation_datetime"]) == ("FILE.SYNTH.1", "2026-10-17T09:00:00")
     assert refs["key_format"] == KEY_FORMAT
     assert refs["generator"]["name"] == "crfpdf" and refs["generator"]["version"] == __version__
     assert refs["generator"]["weasyprint"] == rendered[1].weasyprint_version
@@ -213,7 +217,8 @@ def test_json_annotations_and_index(rendered):
                       "variable_source": "annotation", "value": "mmHg",
                       "where": [{"variable": "VSTESTCD", "comparator": "EQ", "values": ["SYSBP"], "source": "annotation"},
                                 {"variable": "VSLOC", "comparator": "EQ", "values": ["ARM"], "source": "concept"}],
-                      "qnam": None, "key": "VS.VSORRESU where VSLOC = ARM and VSTESTCD = SYSBP"}
+                      "qnam": None, "key": "VS.VSORRESU where VSLOC = ARM and VSTESTCD = SYSBP",
+                      "define_item_oid": "IT.VS.VSORRESU.SYSBP"}
     # the evidence for the origin: the ItemRef, the item's mapping instructions, and what was proposed from them
     assert sysbpu["item_origins"] == [{"type": "Protocol", "source": "Sponsor"}]
     assert sysbpu["prespecified_value"] == "mmHg" and sysbpu["mapping_instructions"] is None
@@ -228,7 +233,10 @@ def test_json_annotations_and_index(rendered):
     aeendat = by_text["AEENDAT"]
     assert [(t["key"], t["variable_source"]) for t in aeendat["targets"]] == [("AE.AEENDTC", "mappingInstructions")]
     assert aeendat["mapping_instructions"]["kind"] == "concatenated"
+    assert aeendat["mapping_instructions"]["kind_source"] == "crf"     # declared in SDTMMappingType
     assert aeendat["mapping_instructions"]["variables"] == ["AEENDTC"]
+    assert aeendat["targets"][0]["define_item_oid"] == "IT.AE.AEENDTC"
+    assert by_text["AETERM"]["mapping_instructions"]["kind_source"] == "mappingInstructions"
     assert "AE.AEENDAT" not in refs["index"]
     assert by_text["AETERM"]["item_origins"] == [{"type": "Collected", "source": "Investigator"}]
     assert by_text["AESER"]["item_origins"] == [] and by_text["AESER"]["prespecified_value"] is None
@@ -255,7 +263,44 @@ def test_json_domains_and_warnings(rendered):
         {"check": "unparsed_annotation", "text": "see protocol section 5", "form_oid": "IG.FORM.DM",
          "item_oid": "IT.DM.NOTE"},
         {"check": "sdtm_alias_disagrees", "text": "the SDTM annotation names AEENDAT; the mapping instructions name AEENDTC",
-         "form_oid": "IG.FORM.AE/1", "item_oid": "IT.AE.AEENDAT"}]
+         "form_oid": "IG.FORM.AE/1", "item_oid": "IT.AE.AEENDAT"},
+        # the default PDF name is not the one the CRF's AnnotatedCRF leaf names
+        {"check": "leaf_href_mismatch", "text": "the CRF's AnnotatedCRF leaf is acrf.pdf, the PDF is crf_synthetic_acrf.pdf",
+         "form_oid": None, "item_oid": None}]
+
+
+def test_json_concept_fixed_values_and_define_items(rendered):
+    refs = rendered[1].refs
+    concept = [a for a in refs["annotations"] if a["level"] == "concept"][0]
+    assert concept["text"] == "VSTESTCD = SYSBP; VSTEST = Systolic Blood Pressure" and concept["domains"] == []
+    assert [(t["key"], t["value"], t["define_item_oid"]) for t in concept["targets"]] == [
+        ("VS.VSTESTCD", "SYSBP", "IT.VS.VSTESTCD"), ("VS.VSTEST", "Systolic Blood Pressure", "IT.VS.VSTEST")]
+    assert concept["proposed_origin"] == {"type": "Protocol", "source": "Sponsor", "basis": "concept",
+                                          "description": None}
+    assert refs["origins"]["VS.VSTESTCD"][0]["values"] == ["SYSBP"]
+    # define_items: the same origin entries, filed under the Define-XML ItemDef OID the CRF pairs each target with
+    define = refs["define_items"]
+    assert set(define) == {"IT.VS.VSTESTCD", "IT.VS.VSTEST", "IT.VS.VSORRES.SYSBP", "IT.VS.VSORRESU.SYSBP",
+                           "IT.AE.AEENDTC", "IT.CM.CMDOSE", "IT.CM.CMDOSTXT"}
+    assert define["IT.VS.VSTESTCD"] == [dict(refs["origins"]["VS.VSTESTCD"][0])]
+    assert [(o["type"], o["basis"], o["values"]) for o in define["IT.VS.VSORRESU.SYSBP"]] == \
+           [("Protocol", ["ItemRef/Origin"], ["mmHg"])]
+    cmdostxt = define["IT.CM.CMDOSTXT"][0]
+    assert (cmdostxt["type"], cmdostxt["mapping"]) == ("Derived", ["split"])
+    assert define["IT.AE.AEENDTC"][0]["pages"] == refs["origins"]["AE.AEENDTC"][0]["pages"]
+
+
+def test_unpaired_define_oids_warn(edited_crf):
+    def edit(tree):
+        ns = {"odm": "http://www.cdisc.org/ns/odm/v2.0"}
+        alias = tree.find(".//odm:ItemDef[@OID='IT.VS.SYSBP']/odm:Alias[@Context='SDTMItemOIDs']", ns)
+        alias.set("Name", "VS.VSSTRESN=IT.VS.VSSTRESN.SYSBP")
+    result = CrfPdf(edited_crf(edit)).render()
+    unpaired = [w.text for w in result.warnings if w.check == "define_oid_unpaired"]
+    assert unpaired == [
+        "VSORRES when VSTESTCD = SYSBP: target VS.VSORRES where VSTESTCD = SYSBP has no SDTMItemOIDs pair",
+        "VSORRES when VSTESTCD = SYSBP: SDTMItemOIDs pair VS.VSSTRESN=IT.VS.VSSTRESN.SYSBP names no target"]
+    assert "IT.VS.VSORRES.SYSBP" not in result.refs["define_items"]
 
 
 def test_json_origins(rendered):
